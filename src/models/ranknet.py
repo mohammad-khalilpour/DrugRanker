@@ -10,6 +10,14 @@ from utils.common import load_model
 from itertools import chain
 
 
+class FeatureProjector(nn.Module):
+    def __init__(self, fp_dim, emb_dim):
+        super(FeatureProjector, self).__init__()
+        self.linear = nn.Linear(fp_dim, emb_dim)
+    
+    def forward(self, x):
+        return self.linear(x)
+
 class Fingerprint(nn.Module):
     def __init__(self, args):
         super(Fingerprint, self).__init__()
@@ -50,7 +58,10 @@ class Scoring(nn.Module):
             self.ffn = MLP(in_channels=self.out_size ,
                                     hidden_channels=25, num_layers=2, out_channels=1)
         elif args.scoring == 'linear':
-            self.ffn = nn.Linear(args.ae_out_size, self.out_size)
+            if args.to_use_ae_emb:
+                self.ffn = nn.Linear(args.ae_out_size, self.out_size)
+            else:
+                self.ffn = nn.Linear(args.gene_in_size, self.out_size)
         elif args.scoring == 'mlp':
             self.ffn = MLP(in_channels=self.out_size+args.ae_out_size ,
                                     hidden_channels=25, num_layers=2, out_channels=1)
@@ -116,6 +127,8 @@ class RankNet(nn.Module):
         self.classify_cmp = args.classify_cmp
         #self.cluster = args.cluster
         self.agg_emb = args.agg_emb
+        self.gene_in_size = args.gene_in_size
+        self.to_use_ae_emb = args.to_use_ae_emb
 
         if self.update_emb == 'concat':
             self.u_mlp = MLP(channel_list=args.mol_out_size*2+args.ae_out_size,
@@ -123,6 +136,8 @@ class RankNet(nn.Module):
         elif self.update_emb in ['cell-attention', 'sum', 'cell+list-attention']:
             self.u_mlp = MLP(in_channels=args.mol_out_size+args.ae_out_size,
                              hidden_channels=50, num_layers=2, out_channels=args.mol_out_size)
+        elif self.update_emb in ['list-attention']:
+            self.cell_dim_projector = FeatureProjector(fp_dim=args.ae_out_size, emb_dim=args.mol_out_size)
 
         ## override the mol_out_size again if update rule is concatenation
         if self.update_emb!='None' and args.agg_emb == 'concat':
@@ -135,16 +150,18 @@ class RankNet(nn.Module):
             self.classifierc = MLP(in_channels=args.mol_out_size+args.ae_out_size,
                                     hidden_channels=25, num_layers=2, out_channels=1)
 
-        self.ae = AE(args)
-
         if self.update_emb == 'list-attention':
-            self.mha = nn.MultiheadAttention(args.mol_out_size, 4)
+            self.mha = nn.MultiheadAttention(args.mol_out_size, 5)
         elif 'cell+list-attention' in self.update_emb:
-            te_layer = nn.TransformerEncoderLayer(args.mol_out_size, 5, 128)
+            te_layer = nn.TransformerEncoderLayer(args.mol_out_size, 1, 128)
             self.te = nn.TransformerEncoder(te_layer, 1)
-
-        if args.pretrained_ae:
-            load_model(self.ae, args.trained_ae_path, args.device)
+        elif self.update_emb == 'ppi-attention':
+            self.cell_mha = nn.MultiheadAttention(args.gene_in_size, 1)
+        
+        if self.to_use_ae_emb:
+            self.ae = AE(args)
+            if args.pretrained_ae:
+                load_model(self.ae, args.trained_ae_path, args.device)
 
         self.scoring = Scoring(args)
 
@@ -155,17 +172,18 @@ class RankNet(nn.Module):
         elif self.update_emb == 'sum':
             x = torch.concat((cell_emb, cmp1_emb+cmp2_emb), dim=1)
             c = self.u_mlp(x)
-        
-
         elif 'cell' in self.update_emb:
             fused = self.u_mlp(torch.concat((cell_emb, cmp1_emb), dim=1))
             if self.update_emb == 'cell+list-attention':
                 cmp1_emb = fused
             elif self.update_emb == 'cell-attention':
                 return cmp1_emb
+        elif self.update_emb == 'list-attention':
+            cell_emb = self.cell_dim_projector(cell_emb)
 
         if 'cell+list-attention' in self.update_emb:
-            return self.te(cmp1_emb.unsqueeze(dim=1)).squeeze(dim=1)
+            output = self.te(cmp1_emb.unsqueeze(dim=1)).squeeze(dim=1)
+            return output.squeeze(dim=1)
         elif 'list-attention' in self.update_emb:
             output, weights = self.mha(cell_emb, cmp1_emb, cmp1_emb)
             return output
@@ -180,11 +198,17 @@ class RankNet(nn.Module):
             cmp2_emb = torch.concat((cmp2_emb, cmp2_emb*gate2), dim=1) # type: ignore
         return cmp1_emb, cmp2_emb
 
-
     def forward(self, clines, cmp1=None, smiles1=None, feat1=None, \
                 cmp2=None, smiles2=None, feat2=None, \
                 pos=None, neg=None, output_type=2):
-        cell_emb = self.ae(clines.float(), use_encoder_only=True)
+
+        if self.to_use_ae_emb:
+            cell_emb = self.ae(clines.float(), use_encoder_only=True)
+        elif self.update_emb == "ppi-attention":
+            cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+        else:
+            cell_emb = clines
+            
         plabel = None
         clabel = None
         cmp_sim = None
@@ -218,7 +242,7 @@ class RankNet(nn.Module):
         else:
             cmp_emb = self.enc(cmp1, feat1)
 
-            if self.update_emb != 'None':
+            if not (self.update_emb in ['None', 'ppi-attention']):
                 cmp_emb = self.update(cell_emb, cmp_emb)
             return self.scoring(cell_emb, cmp_emb, output_type=output_type)
 

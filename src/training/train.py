@@ -10,6 +10,7 @@ from utils.nn_utils import compute_pnorm, compute_gnorm
 from utils.common import pair2set
 
 from tqdm import tqdm
+from pathlib import Path
 
 import time
 
@@ -39,15 +40,18 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
                 clids.append(d.clid)
                 labels.append(d.label)
 
+            # print(f"clids: {len(clids)}")
+            # print(f"clids: {clids[0]}")
             cl_emb = torch.from_numpy(np.array(clobj.get_expression(clids))).to(args.device)
-
+            # print(f"cl_emb: {len(cl_emb[0])}")
             # batch graph needed only for gnn models
             molgraph = to_batchgraph(mols) if args.gnn else None
 
             pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, output_type=0)
 
-            # plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/mg_attention"
-            # make_dot(pred, params=dict(list(model.named_parameters()))).render(plot_path, format="png")
+            plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/ppi_attention"
+            if not Path(plot_path).exists():
+                make_dot(pred, params=dict(list(model.named_parameters()))).render(plot_path, format="png")
 
             if args.model == 'listone' :
                 batch_loss = criterion(pred, torch.tensor(aucs, device=pred.device))

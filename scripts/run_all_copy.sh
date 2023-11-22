@@ -1,7 +1,8 @@
 #!/bin/bash
 
-genexp_path='data/CCLE/CCLE_expression.csv'
-log_steps=1
+# genexp_path='data/CCLE/CCLE_expression.csv'
+genexp_path='data/CCLE/CCLE_expression_ctrp_w20.csv'
+log_steps=5
 max_iter=100
 num_folds=5
 device=${1:-'cuda:0'}
@@ -11,7 +12,7 @@ device=${1:-'cuda:0'}
 # setups=("LCO" "LRO")
 
 models=("lambdaloss")
-representations=("morgan_count")
+representations=("atom_pair")
 setups=("LCO")
 
 data_set="ctrp"
@@ -28,7 +29,7 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_gnn/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \
@@ -42,10 +43,11 @@ for setup in "${setups[@]}"; do
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "attention" \
+                    --update_emb "ppi-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --checkpointing \
+                    --to_save_attention_weights \
                     --setup "$setup" \
                     --log_steps $log_steps > $log_dir/results_$((fold+1)).txt
             done

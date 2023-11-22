@@ -100,8 +100,11 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
                             if (args.setup == 'LRO') else \
                             get_fold_data_LCO(dataset, train_index, val_index, test_index, args.smiles_path)
 
-    features = precompute_features(args) # returns feature_dict keyed by smiles
 
+    # print(f"train_index: {train_index[0]}")
+    # print(f"train_auc: {train_auc[0]}")
+    features = precompute_features(args) # returns feature_dict keyed by smiles
+    # print(f"features: {len(features)}")
     train_pts, val_pts, test_pts = [], [], []
     # train_pts and test_pts are lists of MoleculePoint objects where each object stores drug and cell line pair attributes
     for d in train_auc:
@@ -110,6 +113,8 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         val_pts.append(MoleculePoint(*d, features=features[d[0]], feature_gen=args.feature_gen, in_test=True))
     for d in test_auc:
         test_pts.append(MoleculePoint(*d, features=features[d[0]], feature_gen=args.feature_gen, in_test=True))
+    # print(f"train_pts: {len(train_pts)}")
+    # print(f"train_pts: {train_pts[0]}")
 
     # not required for ListOne and ListAll
     train_ps, test_ps = get_pair_setting(args)
@@ -181,8 +186,14 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         # logging and evaluation at every `log_steps`
         if (epoch) and (epoch % args.log_steps == 0):
             # save models 
-            if (epoch==args.max_iter) or (args.checkpointing and (epoch % 10 == 0)):
+            if (epoch==args.max_iter) or (args.checkpointing and (epoch % args.log_steps == 0)):
                 torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_{epoch}.pt')
+                if os.path.exists(args.save_path +f'fold_{fold}/epoch_{epoch - args.log_steps}.pt'):
+                    os.remove(args.save_path +f'fold_{fold}/epoch_{epoch - args.log_steps}.pt') # one file at a time
+                if args.to_save_attention_weights:
+                    np.save(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch}.npy', model.gene_weights.detach().cpu().numpy())
+                    if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy'):
+                        os.remove(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
 
             pred_scores, true_auc, metric, m_clid, pred_dict = evaluate(clobj, model, val_dataloader, args, Kpos)
             log_metrics(metric, 'VAL', epoch, fold)
@@ -382,6 +393,9 @@ def main(args):
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
+    # print(f"data: {data['train']}")
+    # print(f"data: {data.keys()}")
+    # print(f"splits: {splits[0]['train']}")
     cross_validate(args, data, splits, thresholds)
 
 

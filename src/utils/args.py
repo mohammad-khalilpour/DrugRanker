@@ -51,6 +51,9 @@ def parse_args(args = None):
     # Model architecture
     parser.add_argument('-mol_outd', '--mol_out_size', default=50, type=int)
     parser.add_argument('-ae_ind', '--ae_in_size', default=19177, type=int)
+    parser.add_argument('-to_use_ae', '--to_use_ae_emb', action='store_true')
+    parser.add_argument('-gene_ind', '--gene_in_size', default=2882, type=int,
+                        help='define the gene input size for explanation purposes')
     parser.add_argument('-ae_outd', '--ae_out_size', default=128, type=int)
     parser.add_argument('-attn_d', '--attn_dim', default=25, type=int)
     parser.add_argument('-T', '--message_steps', default=3, type=int)
@@ -59,7 +62,8 @@ def parse_args(args = None):
                     'hier-attention', 'hier-sum', 'hier-cat-sum', 'hier-cat-attention', 'hier-cat-v-attention'])
     parser.add_argument('--atom_messages', action = 'store_true')
     parser.add_argument('--update_emb', default='None',
-                    choices=['cell-attention', 'list-attention', 'cell+list-attention'], \
+                    choices=['cell-attention', 'list-attention', 'cell+list-attention', 
+                            'ppi-attention', 'lasso-attention', 'drug+ppi-attention'], \
                     help='how to convolve comp embeddings to create context vector')
     parser.add_argument('--agg_emb', default='sum', choices=['self', 'concat', 'sum'],
                      help='how to update comp embeddings from context vector')
@@ -94,6 +98,7 @@ def parse_args(args = None):
     parser.add_argument('--log_steps', default=5, type=int, help='log evaluation results every 5 epochs')
     parser.add_argument('--save_path', default='tmp/', type=str)
     parser.add_argument('--checkpointing', action='store_true', help='Whether to save model every `log_steps` epochs')
+    parser.add_argument('--to_save_attention_weights', action='store_true', help='Whether to save attentions weights every `log_steps` epochs')
     
     # Misc
     #parser.add_argument('-cluster', '--cluster', action='store_true', help='additionally optimize hinge loss')
