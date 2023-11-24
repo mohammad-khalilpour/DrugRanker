@@ -8,6 +8,10 @@ from models.ae import AE
 from torch_geometric.nn import MLP
 from utils.common import load_model
 from itertools import chain
+from pathlib import Path
+import logging
+
+logger = logging.getLogger("pythonConfig")
 
 
 class TransformerEncoder(nn.Module):
@@ -183,6 +187,10 @@ def sim(x1, x2, sigma=1, kernel='l2'):
 class RankNet(nn.Module):
     def __init__(self, args, mode=None):
         super(RankNet, self).__init__()
+
+        root_path = Path(args.save_path)
+        file_handler = logging.FileHandler(Path(root_path / f"logs/train_{args.only_fold}.log"), mode="w")
+        logger.addHandler(file_handler)
         self.enc_type = args.gnn
 
         if args.feature_gen:
@@ -320,6 +328,10 @@ class RankNet(nn.Module):
                 cell_emb = self.ae(clines.float(), use_encoder_only=True)
         elif self.update_emb in ["ppi-attention", "lasso-attention"]:
             cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+            if torch.isnan(self.gene_weights).any():
+                logger.info(f"three exists null values in self.gene_weights...")
+            if torch.isnan(cell_emb).any():
+                logger.info(f"three exists null values in cell_emb...")
             cell_emb2 = clines2
         elif self.update_emb in ["res+ppi-attention"]:
             cell_emb = self.res_mlp(clines)

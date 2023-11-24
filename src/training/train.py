@@ -46,7 +46,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
             cl_emb2 = None
             if args.update_emb in ["ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
-                cl_emb = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+                cl_emb = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
             elif args.update_emb in ["enc+ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
                 cl_emb2 = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
