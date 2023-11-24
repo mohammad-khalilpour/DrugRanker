@@ -10,13 +10,81 @@ from utils.common import load_model
 from itertools import chain
 
 
-class FeatureProjector(nn.Module):
-    def __init__(self, fp_dim, emb_dim):
-        super(FeatureProjector, self).__init__()
-        self.linear = nn.Linear(fp_dim, emb_dim)
+class TransformerEncoder(nn.Module):
+  def __init__(self, embed_dim, num_heads, forward_expansion, dropout=0.1):
+    super(TransformerEncoder, self).__init__()
+
+    self.attention = nn.MultiheadAttention(embed_dim, num_heads)
+    self.norm1 = nn.LayerNorm(embed_dim)
+    self.norm2 = nn.LayerNorm(embed_dim)
+
+    self.feed_forward = nn.Sequential(
+        nn.Linear(embed_dim, forward_expansion*embed_dim),
+        nn.ReLU(),
+        nn.Linear(forward_expansion*embed_dim, embed_dim)
+    )
     
+    self.dropout = nn.Dropout(dropout)
+
+  def forward(self, x):
+    attention_out = self.dropout(self.attention(x))
+    x = self.norm1(x + attention_out)  
+    forward_out = self.dropout(self.feed_forward(x))
+    out = self.norm2(x + forward_out)
+
+    return out
+
+class FeatureProjector(nn.Module):
+    def __init__(self, channel_list=[], fp_dim=None, emb_dim=None, 
+                 in_acts=None, act_last=None):
+        super(FeatureProjector, self).__init__()
+        self.channel_list = channel_list
+        self.in_acts = in_acts
+        self.act_last = act_last
+
+        if self.act_last is not None :
+            self.last_act_func = nn.Sigmoid()
+
+        if self.in_acts is not None:
+            self.hidden_act_fun = nn.ReLU()
+
+        self.out_layer = None
+        self.linears = nn.ModuleList()
+        if self.channel_list == []:
+            self.linears.append(nn.Linear(fp_dim, emb_dim))
+        else:
+            ch_iterator = zip(self.channel_list[:-1], self.channel_list[1:])
+            for in_ch, out_ch in ch_iterator:
+                self.linears.append(nn.Linear(in_ch, out_ch))
+
     def forward(self, x):
-        return self.linear(x)
+        for lins in self.linears[:-1]:
+            x = lins(x)
+            if self.in_acts is not None :
+                x = self.hidden_act_fun(x)
+
+        x = self.linears[-1](x)
+        if self.act_last is not None:
+            x = self.last_act_func(x)
+
+        if self.out_layer is not None:
+            x = self.out_layer(x)
+        return x
+
+class Encoder(nn.Module):
+	def __init__(self, args):
+		super().__init__()
+		hidden_size = 4096
+		self.encoder = nn.Sequential(
+						nn.Linear(args.ae_in_size, hidden_size),
+						nn.ReLU(),
+						nn.Linear(hidden_size, hidden_size//4),
+						nn.ReLU(),
+						nn.Linear(hidden_size//4, args.ae_out_size),
+						)
+        
+	def forward(self, x):
+		return self.encoder(x)
 
 class Fingerprint(nn.Module):
     def __init__(self, args):
@@ -59,9 +127,16 @@ class Scoring(nn.Module):
                                     hidden_channels=25, num_layers=2, out_channels=1)
         elif args.scoring == 'linear':
             if args.to_use_ae_emb:
-                self.ffn = nn.Linear(args.ae_out_size, self.out_size)
-            else:
+                if args.update_emb in ['enc+ppi-attention']:
+                    self.ffn = nn.Linear(args.mol_out_size, self.out_size)
+                    # self.ffn = nn.Linear(args.ae_out_size*2, self.out_size)
+                else:
+                    self.ffn = nn.Linear(args.ae_out_size, self.out_size)
+            elif args.update_emb in ['ppi-attention']:
                 self.ffn = nn.Linear(args.gene_in_size, self.out_size)
+            elif args.update_emb in ['res+ppi-attention']:
+                # self.ffn = nn.Linear(args.mol_out_size, self.out_size)
+                self.ffn = nn.Linear(args.res_out_size*2, self.out_size)
         elif args.scoring == 'mlp':
             self.ffn = MLP(in_channels=self.out_size+args.ae_out_size ,
                                     hidden_channels=25, num_layers=2, out_channels=1)
@@ -138,6 +213,19 @@ class RankNet(nn.Module):
                              hidden_channels=50, num_layers=2, out_channels=args.mol_out_size)
         elif self.update_emb in ['list-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.ae_out_size, emb_dim=args.mol_out_size)
+        elif self.update_emb in ['ppi-attention']:
+            self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.mol_out_size)
+        elif self.update_emb in ['enc+ppi-attention']:
+            self.u_mlp2 = FeatureProjector(channel_list=[args.gene_in_size, 128, args.ae_out_size], 
+                                           in_acts="relu")
+            self.cell_dim_projector = MLP(in_channels=args.ae_out_size*2, act="relu",
+                                    hidden_channels=50, num_layers=2, out_channels=args.mol_out_size)
+        elif self.update_emb in ['res+ppi-attention']:
+            self.res_in_size = args.ae_in_size-args.gene_in_size
+            self.res_mlp = MLP(channel_list=[self.res_in_size, 4096, 4096//4, args.res_out_size])
+            self.u_mlp2 = MLP(channel_list=[args.gene_in_size, 128, args.res_out_size])
+            self.cell_dim_projector = MLP(in_channels=args.res_out_size+args.gene_in_size,
+                                    hidden_channels=50, num_layers=2, out_channels=args.mol_out_size)
 
         ## override the mol_out_size again if update rule is concatenation
         if self.update_emb!='None' and args.agg_emb == 'concat':
@@ -155,8 +243,14 @@ class RankNet(nn.Module):
         elif 'cell+list-attention' in self.update_emb:
             te_layer = nn.TransformerEncoderLayer(args.mol_out_size, 1, 128)
             self.te = nn.TransformerEncoder(te_layer, 1)
-        elif self.update_emb == 'ppi-attention':
+        elif self.update_emb in ['ppi-attention', 'enc+ppi-attention', 'res+ppi-attention']:
             self.cell_mha = nn.MultiheadAttention(args.gene_in_size, 1)
+            te_layer = nn.TransformerEncoderLayer(args.gene_in_size, 1, 128)
+            self.te = nn.TransformerEncoder(te_layer, 1)
+        elif self.update_emb in ['attention+enc']:
+            self.cell_mha = nn.MultiheadAttention(args.ae_in_size, 1)
+        elif self.update_emb in ['drug+ppi-attention']:
+            self.cell_drug_mha = nn.MultiheadAttention(args.gene_in_size, 1)
         
         if self.to_use_ae_emb:
             self.ae = AE(args)
@@ -165,7 +259,7 @@ class RankNet(nn.Module):
 
         self.scoring = Scoring(args)
 
-    def update(self, cell_emb, cmp1_emb, cmp2_emb=None):
+    def update(self, cell_emb, cmp1_emb, cell_emb2=None, cmp2_emb=None):
         if self.update_emb == 'concat':
             x = torch.concat((cell_emb, cmp1_emb, cmp2_emb), dim=1) + torch.concat((cell_emb, cmp2_emb, cmp1_emb), dim=1)
             c = self.u_mlp(x)
@@ -180,6 +274,14 @@ class RankNet(nn.Module):
                 return cmp1_emb
         elif self.update_emb == 'list-attention':
             cell_emb = self.cell_dim_projector(cell_emb)
+        elif self.update_emb in ['enc+ppi-attention', 'res+ppi-attention']:
+            cell_emb2 = self.u_mlp2(cell_emb2)
+            x = torch.concat((cell_emb, cell_emb2), dim=1)
+            cell_emb = self.cell_dim_projector(x)
+            return cell_emb
+        elif self.update_emb == 'ppi-attention':
+            cell_emb = self.cell_dim_projector(cell_emb)
+            return cell_emb
 
         if 'cell+list-attention' in self.update_emb:
             output = self.te(cmp1_emb.unsqueeze(dim=1)).squeeze(dim=1)
@@ -198,13 +300,29 @@ class RankNet(nn.Module):
             cmp2_emb = torch.concat((cmp2_emb, cmp2_emb*gate2), dim=1) # type: ignore
         return cmp1_emb, cmp2_emb
 
-    def forward(self, clines, cmp1=None, smiles1=None, feat1=None, \
-                cmp2=None, smiles2=None, feat2=None, \
+    def forward(self, clines, cmp1=None, smiles1=None, feat1=None, 
+                clines2=None, cmp2=None, smiles2=None, feat2=None,
                 pos=None, neg=None, output_type=2):
 
         if self.to_use_ae_emb:
-            cell_emb = self.ae(clines.float(), use_encoder_only=True)
-        elif self.update_emb == "ppi-attention":
+            if self.update_emb in ["attention+enc"]:
+                cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+                cell_emb = self.ae(cell_emb, use_encoder_only=True)
+            if self.update_emb in ["enc+ppi-attention"]:
+                cell_emb = self.ae(clines.float(), use_encoder_only=True)
+                # clines2 = torch.nn.functional.normalize(clines2, dim=0)
+                # cell_emb2, self.gene_weights = self.cell_mha(clines2, clines2, clines2)
+                cell_emb2 = self.te(clines2)
+                self.gene_weights = self.te.state_dict()["layers.0.self_attn.out_proj.weight"] 
+            else:
+                cell_emb = self.ae(clines.float(), use_encoder_only=True)
+        elif self.update_emb in ["ppi-attention", "lasso-attention"]:
+            cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+            cell_emb2 = clines2
+        elif self.update_emb in ["res+ppi-attention"]:
+            cell_emb = self.res_mlp(clines)
+            cell_emb2, self.gene_weights = self.cell_mha(clines2, clines2, clines2)
+        elif self.update_emb in ["drug+ppi-attention"]:
             cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
         else:
             cell_emb = clines
@@ -242,7 +360,13 @@ class RankNet(nn.Module):
         else:
             cmp_emb = self.enc(cmp1, feat1)
 
-            if not (self.update_emb in ['None', 'ppi-attention']):
-                cmp_emb = self.update(cell_emb, cmp_emb)
+            if self.update_emb != 'None':
+                if self.update_emb in ['ppi-attention', 'enc+ppi-attention', 'res+ppi-attention']:
+                    cell_emb = self.update(cell_emb, cmp_emb, cell_emb2=cell_emb2)
+                elif self.update_emb in ['attention+enc']:
+                    pass
+                else:
+                    cmp_emb = self.update(cell_emb, cmp_emb)
+
             return self.scoring(cell_emb, cmp_emb, output_type=output_type)
 

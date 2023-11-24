@@ -30,12 +30,27 @@ def evaluate(clobj, model, test_dataloader, args, Kpos):
 			labels.append(d.label)
 			in_test.append(d.in_test)
 
-		cl_emb = torch.from_numpy(np.asarray(clobj.get_expression(clids))).to(args.device)
+		gene_expression = np.array(clobj.get_expression(clids))
+		cl_emb = torch.from_numpy(gene_expression).to(args.device).to(args.device)
+		cl_emb2 = None
+		if args.update_emb in ["ppi-attention"]:
+			selected_gindices = np.load(args.selected_genexp_path)
+			cl_emb = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+		elif args.update_emb in ["enc+ppi-attention"]:
+			selected_gindices = np.load(args.selected_genexp_path)
+			cl_emb2 = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device).to(args.device)
+		elif args.update_emb in ["res+ppi-attention"]:
+			selected_gindices = np.load(args.selected_genexp_path)
+			res_indices = np.delete(np.arange(gene_expression.shape[1]), selected_gindices)
+			cl_emb = torch.from_numpy(gene_expression[:, res_indices]).to(args.device)
+			cl_emb2 = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+			
 		cpd_ids += [d.cpdid for d in batch]
 
 		molgraph = to_batchgraph(mols) if args.gnn else None
 
-		pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, output_type=0).data.cpu().flatten().tolist()
+		pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, 
+			   		clines2=cl_emb2, output_type=0).data.cpu().flatten().tolist()
 		preds.extend(pred)
 
 	pred_dict = None

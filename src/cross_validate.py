@@ -170,6 +170,7 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     json_out = []
     early_stop = EarlyStopping(patience=args.log_steps)
     
+    best_result = -1
     for epoch in range(1, args.max_iter+1):
         ## TODO: need to be reconsidered
         if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss', 'approxndcg']:
@@ -182,7 +183,6 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         logger.info("GNorm at epoch = %d : %.4f" %(epoch, gnorm))
 
         early_stop.step(compute_pnorm(model))
-
         # logging and evaluation at every `log_steps`
         if (epoch) and (epoch % args.log_steps == 0):
             # save models 
@@ -208,6 +208,18 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
             for k,v in m_clid.items():
                 st = [f'{v[_]:.4f}' for _ in METRICS]
                 print(str(epoch) + ',' + k + ',' + ','.join(st), file=f_test)
+
+            if args.to_save_best:
+                if metric['NDCG@10'] > best_result:
+                    if os.path.exists(args.save_path +f'fold_{fold}/best.pt'):
+                        os.remove(args.save_path +f'fold_{fold}/best.pt') # one file at a time
+                    torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_best.pt')
+                    if args.to_save_attention_weights:
+                        if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_best.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/gene_aw_best.npy') # one file at a time
+                        np.save(args.save_path +f'fold_{fold}/gene_aw_best.npy', model.gene_weights.detach().cpu().numpy())
+                    best_result = metric['NDCG@10']
+                    logger.info('The best model saved at (Epoch %d) with %s = %.4f' %(epoch, 'NDCG@10', best_result))
             test_metrics[epoch] = metric
             json_out.append({'TEST:'+str(epoch): pred_dict})
 

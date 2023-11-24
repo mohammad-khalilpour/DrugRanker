@@ -40,16 +40,29 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
                 clids.append(d.clid)
                 labels.append(d.label)
 
-            # print(f"clids: {len(clids)}")
-            # print(f"clids: {clids[0]}")
-            cl_emb = torch.from_numpy(np.array(clobj.get_expression(clids))).to(args.device)
-            # print(f"cl_emb: {len(cl_emb[0])}")
+            gene_expression = np.array(clobj.get_expression(clids))
+            normalized_gene_expression = np.array(clobj.get_normalized_expression(clids))
+            cl_emb = torch.from_numpy(gene_expression).to(args.device)
+            cl_emb2 = None
+            if args.update_emb in ["ppi-attention"]:
+                selected_gindices = np.load(args.selected_genexp_path)
+                cl_emb = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+            elif args.update_emb in ["enc+ppi-attention"]:
+                selected_gindices = np.load(args.selected_genexp_path)
+                cl_emb2 = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
+            elif args.update_emb in ["res+ppi-attention"]:
+                selected_gindices = np.load(args.selected_genexp_path)
+                res_indices = np.delete(np.arange(gene_expression.shape[1]), selected_gindices)
+                cl_emb = torch.from_numpy(gene_expression[:, res_indices]).to(args.device)
+                cl_emb2 = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+                
             # batch graph needed only for gnn models
             molgraph = to_batchgraph(mols) if args.gnn else None
 
-            pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, output_type=0)
+            pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, 
+                         clines2=cl_emb2, output_type=0)
 
-            plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/ppi_attention"
+            plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/enc_ppi_attention"
             if not Path(plot_path).exists():
                 make_dot(pred, params=dict(list(model.named_parameters()))).render(plot_path, format="png")
 

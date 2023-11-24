@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# genexp_path='data/CCLE/CCLE_expression.csv'
+# genexp_path='data/CCLE/CCLE_expression_ctrp_w20.csv'
 log_steps=5
 max_iter=100
 num_folds=5
@@ -30,34 +32,28 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/enc_ppi_atten/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
-                python3 src/cross_validate.py \
+                python3 src/inference.py \
                     --model "$model" \
                     --only_fold $fold \
+                    --do_test \
                     --data_path "$data_dir/$setup/aucs.txt" \
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
-                    --to_use_ae_emb \
                     --pretrained_ae \
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "enc+ppi-attention" \
+                    --update_emb "ppi-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --selected_genexp_path "$selected_genexp_path" \
-                    --checkpointing \
-                    --to_save_attention_weights \
-                    --to_save_best \
                     --setup "$setup" \
-                    --log_steps $log_steps > $log_dir/results_$((fold+1)).txt
+                    --log_steps $log_steps 
             done
-            python3 src/get_results.py \
-                --save_path $save_dir \
-                --log_steps $log_steps
         done
     done
 done
