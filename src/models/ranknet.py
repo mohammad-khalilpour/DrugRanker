@@ -133,7 +133,8 @@ class Scoring(nn.Module):
                 else:
                     self.ffn = nn.Linear(args.ae_out_size, self.out_size)
             elif args.update_emb in ['ppi-attention']:
-                self.ffn = nn.Linear(args.gene_in_size, self.out_size)
+                # self.ffn = nn.Linear(args.gene_in_size, self.out_size)
+                self.ffn = nn.Linear(args.ae_out_size, self.out_size)
             elif args.update_emb in ['res+ppi-attention']:
                 # self.ffn = nn.Linear(args.mol_out_size, self.out_size)
                 self.ffn = nn.Linear(args.res_out_size*2, self.out_size)
@@ -214,7 +215,8 @@ class RankNet(nn.Module):
         elif self.update_emb in ['list-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.ae_out_size, emb_dim=args.mol_out_size)
         elif self.update_emb in ['ppi-attention']:
-            self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.mol_out_size)
+            self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
+                                                       in_acts="relu")
         elif self.update_emb in ['enc+ppi-attention']:
             self.u_mlp2 = FeatureProjector(channel_list=[args.gene_in_size, 128, args.ae_out_size], 
                                            in_acts="relu")
