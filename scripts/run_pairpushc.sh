@@ -1,7 +1,7 @@
 #!/bin/bash
 
-outd=(25 50 100)
-alpha=(0.1 0.5 1)
+outd=(100)
+alpha=(0.5)
 
 model="pairpushc" # Pair-PushC in the paper
 bs=32
@@ -13,7 +13,7 @@ gs=1
 
 for setup in ${setups[@]}; do
 	for data in ${dataset[@]}; do
-		log_dir="/fs/ess/scratch/PCON0041/Vishal/DrugRank/expts/rank/${data}/20230902-${setup}/del_5/"
+		log_dir="/content/DrugRank/expts/rank/${data}/20230902-${setup}/del_5/"
 		for mold in ${outd[@]}; do
 			for al in ${alpha[@]}; do
 				expt_dir="${log_dir}/${model}/"

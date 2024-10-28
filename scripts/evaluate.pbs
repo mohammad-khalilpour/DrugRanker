@@ -35,11 +35,11 @@ ae_ind=19177
 
 if [[ $setup == 'LCO' ]]; then
 	splits_path="${data_folder}/LCO/pletorg/"
-	ae_path="/fs/ess/PCON0041/Vishal/DrugRank/expts/ae/${setup}/${dataset}/" 
+	ae_path="/content/DrugRank/expts/ae/${setup}/${dataset}/"
 	# change this to the path where the AE models are saved
 elif [[ $setup == 'LRO' ]]; then
 	splits_path="${data_folder}/LRO/"
-	ae_path="/fs/ess/PCON0041/Vishal/DrugRank/expts/ae/${setup}/"
+	ae_path="/content/DrugRank/expts/ae/${setup}/"
 fi
 
 if [[ $dataset == "ctrp" ]]; then
