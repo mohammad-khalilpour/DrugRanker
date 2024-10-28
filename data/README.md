@@ -22,7 +22,7 @@
 ## For LRO Setup
 ```
 mkdir -p ctrpv2/LRO/
-python scripts/create_cv.py --data_dir /fs/ess/PCON0041/Vishal/DrugRank/data/Combined/ --save_dir ctrpv2/LRO/
+python scripts/create_cv.py --data_dir /content/DrugRank/data/Combined/ --save_dir ctrpv2/LRO/
 ```
 The above script creates the list of AUCs in `aucs.txt` and splits in `splits.txt`. Run this command similarly for PRISM.
 
