@@ -31,7 +31,7 @@ def evaluate(clobj, model, test_dataloader, args, Kpos):
 				labels.append(d.label)
 				in_test.append(d.in_test)
 
-			cl_emb = torch.from_numpy(np.asarray(clobj.get_expression(clids))).to(args.device)
+			cl_emb = torch.from_numpy(np.asarray(clobj.get_expression(clids)))
 			cpd_ids += [d.cpdid for d in batch]
 			
 			molgraph = to_batchgraph(mols) if args.gnn else None

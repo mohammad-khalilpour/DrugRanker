@@ -50,3 +50,5 @@ class ListAllLoss(nn.Module):
         pred_max = f.softmax(y_pred/self.M, dim=1) + 1e-9
         pred_log = torch.log(pred_max)
         return torch.mean(-torch.sum(y_label*pred_log))
+
+

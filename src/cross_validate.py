@@ -242,7 +242,7 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             # many other models which were implemented but not used in the paper
             raise NotImplementedError
 
-        model = model.to(args.device)
+        model = model
         logger.debug(model)
         #print(model)
 

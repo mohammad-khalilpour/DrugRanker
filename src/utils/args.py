@@ -43,7 +43,7 @@ def parse_args(args = None):
     parser.add_argument('--smiles_path', type=str, help='Path to the drug-smiles mapping')
     parser.add_argument('--splits_path', type=str, help='Path to the CV split indices')
     parser.add_argument('--genexp_path', type=str, help='Path to the gene expression data',
-                        default='/content/DrugRank/data/CCLE/CCLE_expression.csv')
+                        default="/Users/kian/dev/DrugRanker/data/CCLE/CCLE_expression.csv")
 
     # Model architecture
     parser.add_argument('-mol_outd', '--mol_out_size', default=50, type=int)

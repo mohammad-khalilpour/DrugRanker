@@ -72,7 +72,7 @@ def save_model(model, optimizer, args):
     )
 
 
-def load_model(model, path, device):
+def load_model(model, path, device='cpu'):
     logging.info('Loading checkpoint %s...' % path)
     checkpoint = torch.load(os.path.join(path), map_location=lambda storage, loc: storage)
     model.load_state_dict(checkpoint['model_state_dict'])

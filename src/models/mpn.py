@@ -164,12 +164,12 @@ class MPNN(nn.Module):
 	def _forward(self, mol_graph, features=None, draw=False, node_featurizer=False):
 
 		f_atoms, f_bonds, a2b, b2a, b2revb, a_scope, b_scope = mol_graph.get_components(atom_messages=self.atom_messages)
-		f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms.to(self.device), f_bonds.to(self.device),\
-							a2b.to(self.device), b2a.to(self.device), b2revb.to(self.device)
+		f_atoms, f_bonds, a2b, b2a, b2revb = f_atoms, f_bonds,\
+							a2b, b2a, b2revb
 
 		a2a = None
 		if self.atom_messages:
-			a2a = mol_graph.get_a2a().to(self.device)
+			a2a = mol_graph.get_a2a()
 
 		# Input
 		if self.atom_messages:

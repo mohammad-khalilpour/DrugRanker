@@ -34,7 +34,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, args):
             clids.append(d.clid)
             labels.append(d.label)
 
-        cl_emb = torch.from_numpy(np.array(clobj.get_expression(clids))).to(args.device)
+        cl_emb = torch.from_numpy(np.array(clobj.get_expression(clids)))
 
         # batch graph needed only for gnn models
         molgraph = to_batchgraph(mols) if args.gnn else None
@@ -88,11 +88,11 @@ def train_step(clobj, model, loader, criterion, optimizer, args):
             labels2.append(d2.label)
             aucs2.append(d2.auc)
 
-        cl_emb = torch.from_numpy(np.asarray(clobj.get_expression(ccl_ids))).to(args.device)
+        cl_emb = torch.from_numpy(np.asarray(clobj.get_expression(ccl_ids)))
         # sign = 1 if 1st comp is more sensitive than the 2nd comp; else -1
-        sign = torch.from_numpy(np.sign(np.array(aucs2) - np.array(aucs1))).to(args.device)
+        sign = torch.from_numpy(np.sign(np.array(aucs2) - np.array(aucs1)))
         # y = 1 if both the comp in a pair are of same label, else 0
-        y = torch.from_numpy(np.array(np.array(labels1) == np.array(labels2), dtype=int)).to(args.device)
+        y = torch.from_numpy(np.array(np.array(labels1) == np.array(labels2), dtype=int))
 
         if args.model == 'pairpushc':
             # to reduce call to batch and self.gnn, convert pairs to sets of graphs and features

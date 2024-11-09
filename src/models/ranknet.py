@@ -26,7 +26,7 @@ class Fingerprint(nn.Module):
         self.device = args.device
 
     def forward(self, molgraph, features):
-        features = torch.from_numpy(np.stack(features)).float().to(self.device)
+        features = torch.from_numpy(np.stack(features)).float()
         #return self.mlp(features)
         return self.ffn2(self.relu(self.ffn1(features)))
 

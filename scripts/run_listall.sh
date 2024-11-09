@@ -10,7 +10,7 @@ score="linear"
 
 for setup in ${setups[@]}; do
 	for data in ${dataset[@]}; do
-		log_dir="/content/DrugRank/expts/rank/${data}/20230902-${setup}/del_5/"
+		log_dir="/Users/kian/dev/DrugRanker/expts/rank/${data}/20230902-${setup}/del_5/"
 		# change this to the path where the results will be saved
 		for mold in ${outd[@]}; do
 			for gs in ${gsteps[@]}; do

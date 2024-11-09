@@ -49,17 +49,16 @@ args = Namespace(**config)
 args.device = 'cpu'
 
 # load trained ranking model
-model = RankNet(args).to(args.device)
+model = RankNet(args)
 model.load_state_dict(torch.load(args.ckpt_path, map_location=torch.device('cpu')))
 ae = model.ae
 
 # load pretrained AE
 pretrained_ae = AE(args)
-pretrained_ae.to(args.device)
-load_model(pretrained_ae, args.trained_ae_path, args.device)
+load_model(pretrained_ae, args.trained_ae_path)
 
 # load gene expression data
-data = np.genfromtxt('/content/DrugRank/data/CCLE/CCLE_expression.csv',
+data = np.genfromtxt('/Users/kian/dev/DrugRank/data/CCLE/CCLE_expression.csv',
                          delimiter=',', dtype=str)
 # get cell ID and type=tissue/cancer mappings
 # The cell IDs order must be consistent with that in  U.txt from CCLERank

@@ -17,8 +17,8 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from models.ae import AE
-from utils.common import set_seed, save_model, load_model
-from utils.metrics import mse
+from src.utils.common import set_seed, save_model, load_model
+from src.utils.metrics import mse
 from argparse import ArgumentParser
 
 def read_gene_exp(file):
@@ -53,7 +53,7 @@ def evaluate(model, dataloader, metric, device='cpu'):
 
     losses = []
     for batch in dataloader:
-        batch = batch.to(device)
+        batch = batch
         recon = model(batch)
         l = metric(recon, batch)
         losses.append(l.item())
@@ -69,12 +69,12 @@ def test_ae(args):
     data = list(read_gene_exp(args.genexp_file).values())
 
     model = AE(args)
-    load_model(model, args.save_path, device=args.device)
-    model = model.to(args.device)
+    load_model(model, args.save_path)
+    model = model
 
     loss_fn = nn.MSELoss()
     val_loader = DataLoader(dataset=data, batch_size=args.bs, shuffle=False) # type: ignore
-    print(f'{evaluate(model, val_loader, loss_fn, args.device):.3f}')
+    print(f'{evaluate(model, val_loader, loss_fn):.3f}')
 
 
 def train_ae(args):
@@ -87,9 +87,9 @@ def train_ae(args):
     else:
         train_ids, test_ids = read_splits(args.splits_path)
 
-    model = AE(args).to(args.device)
+    model = AE(args)
     if os.path.exists(args.save_path + 'model.pt'):
-        load_model(model, args.save_path, device=args.device)
+        load_model(model, args.save_path)
         print('Saved model found... resuming training')
 
     loss_fn = nn.MSELoss()
@@ -113,7 +113,6 @@ def train_ae(args):
     for epoch in range(1,args.epochs+1):
         batch_loss = []
         for batch in train_loader:
-            batch = batch.to(args.device)
             recon = model(batch)
 
             loss = loss_fn(recon, batch)
@@ -128,7 +127,7 @@ def train_ae(args):
 
         # eval every 5 epochs
         if epoch % 5 == 0:
-            ret = evaluate(model, val_loader, loss_fn, args.device)
+            ret = evaluate(model, val_loader, loss_fn)
             print(f'Validation Loss = {ret:.3f}')
 
             if best_score > ret:
@@ -140,8 +139,8 @@ def train_ae(args):
     print(f'Best model saved for epoch {best_epoch}')
 
     # just check loading
-    load_model(model, args.save_path, args.device)
-    print(f'{evaluate(model, val_loader, loss_fn, args.device):.3f}')
+    load_model(model, args.save_path)
+    print(f'{evaluate(model, val_loader, loss_fn):.3f}')
 
 
 def parse_args():
@@ -162,7 +161,7 @@ def parse_args():
 
 if __name__ == '__main__':
     args = parse_args()
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+    args.device = "cpu"
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
     train_ae(args)
