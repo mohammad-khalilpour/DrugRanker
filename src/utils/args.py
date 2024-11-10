@@ -24,11 +24,11 @@ def parse_args(args = None):
 
     # Model and features
     parser.add_argument('--model', type=str, default='listall',
-                        choices=['pairpushc', 'listone', 'listall'])
+                        choices=["listone", "listall", "pairpushc", "lambdaloss", "lambdarank", "neuralndcg"])
     parser.add_argument('--gnn', type=str,
                         choices=['dmpn'])
     parser.add_argument('-fgen', '--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
-                        'morgan_tanimoto_bioassay', 'rdkit_2d', 'rdkit_2d_normalized'],
+                        'map4', 'avalon', 'atom_pair', '2d_pharmacophore', 'layered_rdkit'],
                         help='Without `use_features_only`, this will concat molecule level features to learned gnn emb')
     #parser.add_argument('-fonly', '--use_features_only', action='store_true', help='use only features for baselines')
 
@@ -43,7 +43,7 @@ def parse_args(args = None):
     parser.add_argument('--smiles_path', type=str, help='Path to the drug-smiles mapping')
     parser.add_argument('--splits_path', type=str, help='Path to the CV split indices')
     parser.add_argument('--genexp_path', type=str, help='Path to the gene expression data',
-                        default='/content/DrugRank/data/CCLE/CCLE_expression.csv')
+                        default='/content/DrugRanker/data/CCLE/CCLE_expression.csv')
 
     # Model architecture
     parser.add_argument('-mol_outd', '--mol_out_size', default=50, type=int)

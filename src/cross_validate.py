@@ -2,6 +2,7 @@ import sys
 import logging
 
 import torch
+import torch.nn as nn
 import torch.optim as opt
 from torch.utils.data import DataLoader
 
@@ -10,7 +11,7 @@ from utils.args import parse_args
 from utils.common import *
 from utils.nn_utils import compute_pnorm, compute_gnorm, param_count, EarlyStopping
 from models.ranknet import RankNet
-from models.loss import PairPushLoss, ListOneLoss, ListAllLoss
+from models.loss import PairPushLoss, ListOneLoss, ListAllLoss, LambdaLoss, LambdaRankLoss, NeuralNDCGLoss
 from dataloader.loader import CellLine, MoleculePoint, MoleculeDatasetTrain, MoleculeDatasetTest
 from dataloader.utils import *
 
@@ -236,7 +237,7 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             #train_index, test_index = list(range(len(dataset)*4//5)), list(range(len(dataset)*4//5, len(dataset)))
 
         # initialize the model
-        if args.model in ['pairpushc', 'listone', 'listall']:
+        if args.model in ['pairpushc', 'listone', 'listall', 'lambdaloss', 'lambdarank', 'neuralndcg']:
             model = RankNet(args)
         else:
             # many other models which were implemented but not used in the paper
@@ -254,6 +255,12 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             criterion = ListAllLoss(args.M)
         elif args.model == 'pairpushc':
             criterion = PairPushLoss(args.alpha, args.beta)
+        elif args.model == 'lambdaloss':
+            criterion = LambdaLoss()
+        elif args.model == 'lambdarank':
+            criterion = LambdaRankLoss()
+        elif args.model == 'neuralndcg':
+            criterion = NeuralNDCGLoss()
         else:
             ## many other models are implemented but not required for the workshop paper
             raise NotImplementedError 

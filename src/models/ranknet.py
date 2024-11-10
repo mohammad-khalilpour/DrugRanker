@@ -18,6 +18,8 @@ class Fingerprint(nn.Module):
             input_dim = 200
         elif args.feature_gen == 'morgan' or args.feature_gen == 'morgan_count':
             input_dim = 2048
+        else:
+            input_dim = 1024
 
         self.ffn1 = nn.Linear(input_dim, 128)
         self.ffn2 = nn.Linear(128, args.mol_out_size)

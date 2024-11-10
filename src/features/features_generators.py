@@ -3,6 +3,7 @@ from typing import Callable, List, Union
 import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
+from map4 import MAP4Calculator
 
 
 Molecule = Union[str, Chem.Mol]
@@ -132,6 +133,47 @@ def custom_features_generator(mol: Molecule, list_mols: List[Molecule]) -> np.nd
 	feature_list_mols = [DataStructs.cDataStructs.CreateFromBitString(''.join(map(str, i))) for i in feature_list_mols]
 
 	return DataStructs.BulkTanimotoSimilarity(feature_mol, feature_list_mols)
+
+
+@register_features_generator('map4')
+def map4_features_generator(mol: Molecule) -> np.ndarray:
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	return np.array(map4_calculator.calculate(mol))
+
+
+@register_features_generator('avalon')
+def avalon_features_generator(mol: Molecule, num_bits: int = 512) -> np.ndarray:
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	features_vec = rdMolDescriptors.GetAvalonFP(mol, nBits=num_bits)
+	features = np.zeros((1,))
+	DataStructs.ConvertToNumpyArray(features_vec, features)
+	return features
+
+
+@register_features_generator('atom_pair')
+def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	features_vec = rdMolDescriptors.GetAtomPairFingerprintAsBitVect(mol)
+	features = np.zeros((1,))
+	DataStructs.ConvertToNumpyArray(features_vec, features)
+	return features
+
+
+@register_features_generator('2d_pharmacophore')
+def pharmacophore_2d_features_generator(mol: Molecule) -> np.ndarray:
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	features_vec = rdMolDescriptors.GetHashedAtomPairFingerprintAsBitVect(mol)
+	features = np.zeros((1,))
+	DataStructs.ConvertToNumpyArray(features_vec, features)
+	return features
+
+@register_features_generator('layered_rdkit')
+def layered_rdkit_features_generator(mol: Molecule) -> np.ndarray:
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	features_vec = Chem.rdmolops.LayeredFingerprint(mol)
+	features = np.zeros((1,))
+	DataStructs.ConvertToNumpyArray(features_vec, features)
+	return features
 
 """
 Custom features generator template.
