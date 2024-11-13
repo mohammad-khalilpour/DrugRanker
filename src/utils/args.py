@@ -1,6 +1,7 @@
 import argparse
 
 def override_args(args):
+    print(args)
     if args.gnn is None:
         args.message_steps = None
         args.pooling = None
@@ -27,7 +28,7 @@ def parse_args(args = None):
                         choices=["listone", "listall", "pairpushc", "lambdaloss", "lambdarank", "neuralndcg"])
     parser.add_argument('--gnn', type=str,
                         choices=['dmpn'])
-    parser.add_argument('-fgen', '--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
+    parser.add_argument('--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
                         'map4', 'avalon', 'atom_pair', '2d_pharmacophore', 'layered_rdkit'],
                         help='Without `use_features_only`, this will concat molecule level features to learned gnn emb')
     #parser.add_argument('-fonly', '--use_features_only', action='store_true', help='use only features for baselines')
@@ -85,7 +86,7 @@ def parse_args(args = None):
 
     # Pretrained models
     parser.add_argument('--pretrained_ae', action='store_true', help='whether using pretrained cell line AE')
-    parser.add_argument('-ae_path', '--trained_ae_path', type=str, help='Checkpoint path for the AE model')
+    parser.add_argument('--trained_ae_path', type=str, help='Checkpoint path for the AE model')
 
     # Saving and logging
     parser.add_argument('--log_steps', default=5, type=int, help='log evaluation results every 5 epochs')
