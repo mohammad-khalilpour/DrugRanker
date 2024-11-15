@@ -8,7 +8,6 @@ representations=('morgan_count' 'map4' 'avalon' 'atom_pair' '2d_pharmacophore' '
 
 for model in "${models[@]}"; do
     for representation in "${representations[@]}"; do
-        ls
         python src/cross_validate.py \
             --model "$model" \
             --data_path "$DATA_FOLDER/LCO/aucs.txt" \
