@@ -54,7 +54,7 @@ class ListAllLoss(nn.Module):
 
 
 class LambdaLoss(nn.Module):
-    def __init__(self, eps=1e-10, padded_value_indicator=-1, weighing_scheme=None, k=None, sigma=1.0, mu=10.0,
+    def __init__(self, eps=1e-10, padded_value_indicator=-1, weighing_scheme=None, k=10, sigma=1.0, mu=10.0,
                  reduction="sum", reduction_log="binary"):
         super(LambdaLoss, self).__init__()
         self.eps = eps
@@ -84,7 +84,7 @@ class LambdaLoss(nn.Module):
         true_diffs = true_sorted_by_preds[:, :, None] - true_sorted_by_preds[:, None, :]
         padded_pairs_mask = torch.isfinite(true_diffs)
 
-        padded_pairs_mask = padded_pairs_mask & (true_diffs > 0)
+        padded_pairs_mask = padded_pairs_mask & (true_diffs >= 0)
 
         ndcg_at_k_mask = torch.zeros((y_pred.shape[1], y_pred.shape[1]), dtype=torch.bool, device=device)
         if self.k is not None:
