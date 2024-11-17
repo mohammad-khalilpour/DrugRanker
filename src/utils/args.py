@@ -44,7 +44,7 @@ def parse_args(args = None):
     parser.add_argument('--smiles_path', type=str, help='Path to the drug-smiles mapping')
     parser.add_argument('--splits_path', type=str, help='Path to the CV split indices')
     parser.add_argument('--genexp_path', type=str, help='Path to the gene expression data',
-                        default='/content/DrugRanker/data/CCLE/CCLE_expression.csv')
+                        default='data/CCLE/CCLE_expression.csv')
 
     # Model architecture
     parser.add_argument('-mol_outd', '--mol_out_size', default=50, type=int)
@@ -90,7 +90,7 @@ def parse_args(args = None):
 
     # Saving and logging
     parser.add_argument('--log_steps', default=5, type=int, help='log evaluation results every 5 epochs')
-    parser.add_argument('--save_path', default='../tmp/', type=str)
+    parser.add_argument('--save_path', default='tmp/', type=str)
     parser.add_argument('--checkpointing', action='store_true', help='Whether to save model every `log_steps` epochs')
     
     # Misc

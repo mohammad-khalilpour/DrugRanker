@@ -8,7 +8,7 @@ from scipy.stats import spearmanr
 parser = ArgumentParser('Computing pairwise cell line similarity.')
 parser.add_argument('--data_dir', help='Path to the data directory containing AUC matrix, cell IDs')
 parser.add_argument('--genexp_file', help='Path to the gene expression file',
-                    default='/content/DrugRank/data/CCLE/CCLE_expression.csv')
+                    default='/media/external_16TB_1/kian_khalilpour/data/CCLE/CCLE_expression.csv')
 parser.add_argument('--genes', help='Path to the file containing list of genes')
 parser.add_argument('--sim', choices=['cos', 'rbf', 'ds'], help='Similarity method')
 parser.add_argument('--sigma', default=10, help='Sigma for RBF')

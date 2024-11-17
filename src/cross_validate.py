@@ -11,7 +11,7 @@ from utils.args import parse_args
 from utils.common import *
 from utils.nn_utils import compute_pnorm, compute_gnorm, param_count, EarlyStopping
 from models.ranknet import RankNet
-from models.loss import PairPushLoss, ListOneLoss, ListAllLoss, LambdaLoss, LambdaRankLoss, NeuralNDCGLoss
+from models.loss import PairPushLoss, ListOneLoss, ListAllLoss, LambdaLoss, lambdaRank_scheme, NeuralNDCG
 from dataloader.loader import CellLine, MoleculePoint, MoleculeDatasetTrain, MoleculeDatasetTest
 from dataloader.utils import *
 
@@ -129,7 +129,7 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     early_stop = EarlyStopping(patience=args.log_steps)
     
     for epoch in range(1, args.max_iter+1):
-        if args.model in ['listone', 'listall']:
+        if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss']:
             loss, gnorm = train_step_listnet(clobj, model, train_dataloader, criterion, optimizer, args)
         else:
             loss, gnorm = train_step(clobj, model, train_dataloader, criterion, optimizer, args)
@@ -258,9 +258,9 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
         elif args.model == 'lambdaloss':
             criterion = LambdaLoss()
         elif args.model == 'lambdarank':
-            criterion = LambdaRankLoss()
+            criterion = LambdaLoss(weighing_scheme=lambdaRank_scheme)
         elif args.model == 'neuralndcg':
-            criterion = NeuralNDCGLoss()
+            criterion = NeuralNDCG()
         else:
             ## many other models are implemented but not required for the workshop paper
             raise NotImplementedError 

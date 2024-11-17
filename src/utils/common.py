@@ -98,7 +98,7 @@ def get_pair_setting(args):
         train_ps = 1
     elif args.surrogate == 'tcbb':
         train_ps = 2
-    if args.model in ['listone', 'listall']:
+    if args.model in ['listone', 'listall', 'lambdaloss', 'lambdarank', 'neuralndcg']:
         train_ps = -1
     return train_ps, test_ps
 

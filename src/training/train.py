@@ -40,10 +40,12 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, args):
         molgraph = to_batchgraph(mols) if args.gnn else None
 
         pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, output_type=0)
-        if args.model == 'listone':
+        if args.model == 'listone' :
             batch_loss = criterion(pred, torch.tensor(aucs, device=pred.device))
         elif args.model == 'listall':
             batch_loss = criterion(pred.reshape(1,-1), torch.tensor(labels, device=pred.device).reshape(1,-1))
+        elif args.model == 'lambdarank' or args.model == 'neuralndcg' or args.model == 'lambdaloss':
+            batch_loss = criterion(pred.reshape(1,-1), torch.tensor(aucs, device=pred.device).reshape(1,-1))
         else:
             raise ValueError('Invalid listwise model name')
         total_loss += batch_loss.item()

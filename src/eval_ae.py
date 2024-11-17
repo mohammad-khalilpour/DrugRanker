@@ -59,7 +59,7 @@ pretrained_ae.to(args.device)
 load_model(pretrained_ae, args.trained_ae_path, args.device)
 
 # load gene expression data
-data = np.genfromtxt('/content/DrugRank/data/CCLE/CCLE_expression.csv',
+data = np.genfromtxt('../data/CCLE/CCLE_expression.csv',
                          delimiter=',', dtype=str)
 # get cell ID and type=tissue/cancer mappings
 # The cell IDs order must be consistent with that in  U.txt from CCLERank

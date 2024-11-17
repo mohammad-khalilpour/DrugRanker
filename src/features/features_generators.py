@@ -4,6 +4,10 @@ import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
 from map4 import MAP4Calculator
+from rdkit.Avalon.pyAvalonTools import GetAvalonFP
+from rdkit.Chem.AtomPairs.Pairs import GetAtomPairFingerprintAsBitVect
+from rdkit.Chem.rdMolDescriptors import GetHashedAtomPairFingerprintAsBitVect
+from rdkit.Chem.Pharm2D import Generate, Gobbi_Pharm2D
 
 
 Molecule = Union[str, Chem.Mol]
@@ -138,13 +142,14 @@ def custom_features_generator(mol: Molecule, list_mols: List[Molecule]) -> np.nd
 @register_features_generator('map4')
 def map4_features_generator(mol: Molecule) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	map4_calculator = MAP4Calculator()
 	return np.array(map4_calculator.calculate(mol))
 
 
 @register_features_generator('avalon')
-def avalon_features_generator(mol: Molecule, num_bits: int = 512) -> np.ndarray:
+def avalon_features_generator(mol: Molecule, num_bits: int = 1024) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	features_vec = rdMolDescriptors.GetAvalonFP(mol, nBits=num_bits)
+	features_vec = GetAvalonFP(mol, nBits=num_bits)
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features
@@ -153,7 +158,7 @@ def avalon_features_generator(mol: Molecule, num_bits: int = 512) -> np.ndarray:
 @register_features_generator('atom_pair')
 def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	features_vec = rdMolDescriptors.GetAtomPairFingerprintAsBitVect(mol)
+	features_vec = GetHashedAtomPairFingerprintAsBitVect(mol, 1024)
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features
@@ -162,15 +167,20 @@ def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
 @register_features_generator('2d_pharmacophore')
 def pharmacophore_2d_features_generator(mol: Molecule) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	features_vec = rdMolDescriptors.GetHashedAtomPairFingerprintAsBitVect(mol)
-	features = np.zeros((1,))
-	DataStructs.ConvertToNumpyArray(features_vec, features)
+
+	factory = Gobbi_Pharm2D.factory
+	features_vec = Generate.Gen2DFingerprint(mol, factory)
+
+	features = np.zeros((len(features_vec),), dtype=np.int8)
+	for idx in features_vec.GetOnBits():
+		features[idx] = 1
+
 	return features
 
 @register_features_generator('layered_rdkit')
 def layered_rdkit_features_generator(mol: Molecule) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	features_vec = Chem.rdmolops.LayeredFingerprint(mol)
+	features_vec = AllChem.LayeredFingerprint(mol, fpSize=1024)
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features

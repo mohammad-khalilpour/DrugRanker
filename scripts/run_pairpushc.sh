@@ -13,7 +13,7 @@ gs=1
 
 for setup in ${setups[@]}; do
 	for data in ${dataset[@]}; do
-		log_dir="/content/DrugRank/expts/rank/${data}/20230902-${setup}/del_5/"
+		log_dir="../expts/rank/${data}/20230902-${setup}/del_5/"
 		for mold in ${outd[@]}; do
 			for al in ${alpha[@]}; do
 				expt_dir="${log_dir}/${model}/"
