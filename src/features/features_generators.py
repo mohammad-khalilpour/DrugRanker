@@ -3,7 +3,7 @@ from typing import Callable, List, Union
 import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
-from map4 import MAP4Calculator
+# from map4 import MAP4Calculator
 from rdkit.Avalon.pyAvalonTools import GetAvalonFP
 from rdkit.Chem.AtomPairs.Pairs import GetAtomPairFingerprintAsBitVect
 from rdkit.Chem.rdMolDescriptors import GetHashedAtomPairFingerprintAsBitVect
