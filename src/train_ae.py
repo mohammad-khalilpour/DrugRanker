@@ -69,7 +69,7 @@ def test_ae(args):
     data = list(read_gene_exp(args.genexp_file).values())
 
     model = AE(args)
-    load_model(model, args.save_path, device=args.device)
+    load_model(model, args.save_path + "model.pt", device=args.device)
     model = model.to(args.device)
 
     loss_fn = nn.MSELoss()
@@ -89,7 +89,7 @@ def train_ae(args):
 
     model = AE(args).to(args.device)
     if os.path.exists(args.save_path + 'model.pt'):
-        load_model(model, args.save_path, device=args.device)
+        load_model(model, args.save_path+ 'model.pt', device=args.device)
         print('Saved model found... resuming training')
 
     loss_fn = nn.MSELoss()

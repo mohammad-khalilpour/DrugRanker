@@ -3,7 +3,7 @@
 outdim=(128)
 batch=(64)
 data=$1
-expt_dir="../DrugRanker/expts/ae/LCO/${data}/"
+expt_dir="expts/ae/LCO/${data}"
 fold=0
 gexp_file="data/CCLE/CCLE_expression.csv"
 ae_ind=19177

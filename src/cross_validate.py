@@ -146,7 +146,7 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
             # save models 
             if (epoch==args.max_iter) or (args.checkpointing and (epoch % 10 == 0)):
                 ## TODO: check names
-                torch.save(model.state_dict(), args.save_path +f'/{args.model}/{args.representation}/{args.setup}/{args.datapath}/fold_{fold}/epoch_{epoch}.pt')
+                torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_{epoch}.pt')
 
             pred_scores, true_auc, metric, m_clid, pred_dict = evaluate(clobj, model, val_dataloader, args, Kpos)
             log_metrics(metric, 'VAL', epoch, fold)
