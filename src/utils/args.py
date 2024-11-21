@@ -1,7 +1,7 @@
 import argparse
 
 def override_args(args):
-    print(args)
+    # print(args)
     if args.gnn is None:
         args.message_steps = None
         args.pooling = None

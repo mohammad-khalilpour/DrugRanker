@@ -24,6 +24,10 @@ logger = logging.getLogger('train.log')
 logger.setLevel(logging.DEBUG)
 
 def log_metrics(metric, mode, epoch, fold=None):
+    # print("mode", "epoch", "fold", sep=',', end=',')
+    # for k, v in metric.items():
+    #     print('%s' %k, end=',')
+    # print()
     print(mode, epoch, fold, sep=',', end=',')
     for k, v in metric.items():
         if fold:
@@ -134,7 +138,6 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         else:
             loss, gnorm = train_step(clobj, model, train_dataloader, criterion, optimizer, epoch, args)
 
-
         logger.info("Loss at epoch = %d : %.4f" %(epoch, loss))
         logger.info("Pnorm at epoch = %d : %.4f" %(epoch, compute_pnorm(model)))
         logger.info("GNorm at epoch = %d : %.4f" %(epoch, gnorm))
@@ -145,7 +148,6 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         if (epoch) and (epoch % args.log_steps == 0):
             # save models 
             if (epoch==args.max_iter) or (args.checkpointing and (epoch % 10 == 0)):
-                ## TODO: check names
                 torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_{epoch}.pt')
 
             pred_scores, true_auc, metric, m_clid, pred_dict = evaluate(clobj, model, val_dataloader, args, Kpos)
@@ -285,7 +287,11 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             for e, metric in val_metrics_folds[fold].items():
                 if e == ep:
                     avg_metrics.append(metric)
-        log_metrics(calc_avg_perf(avg_metrics), 'VAL', ep)
+        results_dict = calc_avg_perf(avg_metrics)
+        log_metrics(results_dict, 'VAL', ep)
+        results_dict["mode"] = 'VAL'
+        results_dict["epoch"] = ep
+        print(results_dict)
 
     for ep in range(args.log_steps, args.max_iter+1, args.log_steps):
         avg_metrics = []
@@ -293,7 +299,11 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             for e, metric in test_metrics_folds[fold].items():
                 if e == ep:
                     avg_metrics.append(metric)
-        log_metrics(calc_avg_perf(avg_metrics), 'TEST', ep)
+        results_dict = calc_avg_perf(avg_metrics)
+        log_metrics(results_dict, 'TEST', ep)
+        results_dict["mode"] = 'TEST'
+        results_dict["epoch"] = ep
+        print(results_dict)
 
     if args.do_train_eval:
         for ep in range(args.log_steps, args.max_iter+1, args.log_steps):
