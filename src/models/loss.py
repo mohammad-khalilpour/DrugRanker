@@ -154,13 +154,15 @@ class NeuralNDCG(nn.Module):
                 tau=self.temperature,
                 mask=mask,
                 beta=self.beta,
-                log_scores=self.log_scores
+                log_scores=self.log_scores,
+                device=dev,
             )
         else:
             P_hat = deterministic_neural_sort(
                 y_pred.unsqueeze(-1),
                 tau=self.temperature,
-                mask=mask
+                mask=mask,
+                device=dev,
             ).unsqueeze(0)
 
         # Perform Sinkhorn scaling to obtain doubly stochastic permutation matrices
@@ -230,7 +232,7 @@ def sinkhorn_scaling(mat, mask=None, tol=1e-6, max_iter=50):
     return mat
 
 
-def deterministic_neural_sort(s, tau, mask):
+def deterministic_neural_sort(s, tau, mask, device="cuda"):
     """
     Deterministic neural sort.
     Code taken from "Stochastic Optimization of Sorting Networks via Continuous Relaxations", ICLR 2019.
@@ -240,20 +242,19 @@ def deterministic_neural_sort(s, tau, mask):
     :param mask: mask indicating padded elements
     :return: approximate permutation matrices of shape [batch_size, slate_length, slate_length]
     """
-    dev = 'cpu'
 
     n = s.size()[1]
-    one = torch.ones((n, 1), dtype=torch.float32, device=dev)
+    one = torch.ones((n, 1), dtype=torch.float32, device=device)
     s = s.masked_fill(mask[:, :, None], -1e8)
     A_s = torch.abs(s - s.permute(0, 2, 1))
     A_s = A_s.masked_fill(mask[:, :, None] | mask[:, None, :], 0.0)
 
     B = torch.matmul(A_s, torch.matmul(one, torch.transpose(one, 0, 1)))
 
-    temp = [n - m + 1 - 2 * (torch.arange(n - m, device=dev) + 1) for m in mask.squeeze(-1).sum(dim=1)]
+    temp = [n - m + 1 - 2 * (torch.arange(n - m, device=device) + 1) for m in mask.squeeze(-1).sum(dim=1)]
     temp = [t.type(torch.float32) for t in temp]
-    temp = [torch.cat((t, torch.zeros(n - len(t), device=dev))) for t in temp]
-    scaling = torch.stack(temp).type(torch.float32).to(dev)  # type: ignore
+    temp = [torch.cat((t, torch.zeros(n - len(t), device=device))) for t in temp]
+    scaling = torch.stack(temp).type(torch.float32).to(device)  # type: ignore
 
     s = s.masked_fill(mask[:, :, None], 0.0)
     C = torch.matmul(s, scaling.unsqueeze(-2))
@@ -266,7 +267,7 @@ def deterministic_neural_sort(s, tau, mask):
     return P_hat
 
 
-def stochastic_neural_sort(s, n_samples, tau, mask, beta=1.0, log_scores=True, eps=1e-10):
+def stochastic_neural_sort(s, n_samples, tau, mask, beta=1.0, log_scores=True, eps=1e-10, device="cuda"):
     """
     Stochastic neural sort. Please note that memory complexity grows by factor n_samples.
     Code taken from "Stochastic Optimization of Sorting Networks via Continuous Relaxations", ICLR 2019.
@@ -280,12 +281,10 @@ def stochastic_neural_sort(s, n_samples, tau, mask, beta=1.0, log_scores=True, e
     :param eps: epsilon for the logarithm function
     :return: approximate permutation matrices of shape [n_samples, batch_size, slate_length, slate_length]
     """
-    dev = 'cpu'
-
     batch_size = s.size()[0]
     n = s.size()[1]
     s_positive = s + torch.abs(s.min())
-    samples = beta * sample_gumbel([n_samples, batch_size, n, 1], device=dev)
+    samples = beta * sample_gumbel([n_samples, batch_size, n, 1], device=device)
     if log_scores:
         s_positive = torch.log(s_positive + eps)
 

@@ -130,9 +130,9 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     
     for epoch in range(1, args.max_iter+1):
         if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss']:
-            loss, gnorm = train_step_listnet(clobj, model, train_dataloader, criterion, optimizer, args)
+            loss, gnorm = train_step_listnet(clobj, model, train_dataloader, criterion, optimizer, epoch, args)
         else:
-            loss, gnorm = train_step(clobj, model, train_dataloader, criterion, optimizer, args)
+            loss, gnorm = train_step(clobj, model, train_dataloader, criterion, optimizer, epoch, args)
 
 
         logger.info("Loss at epoch = %d : %.4f" %(epoch, loss))
