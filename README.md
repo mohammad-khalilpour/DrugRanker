@@ -1,6 +1,7 @@
 # Precision Anti-Cancer Drug Selection via Neural Ranking
 
 Authors: Vishal Dey, Xia Ning
+Co Authors: Faraz
 
 
 Workshop paper: Accepted in [BioKDD '23](https://biokdd.org/biokdd23/index.html)
