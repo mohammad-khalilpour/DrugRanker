@@ -3,7 +3,7 @@ from typing import Callable, List, Union
 import numpy as np
 from rdkit import Chem, DataStructs
 from rdkit.Chem import AllChem
-from map4 import MAP4Calculator
+# from map4 import MAP4Calculator
 from rdkit.Avalon.pyAvalonTools import GetAvalonFP
 from rdkit.Chem.AtomPairs.Pairs import GetAtomPairFingerprintAsBitVect
 from rdkit.Chem.rdMolDescriptors import GetHashedAtomPairFingerprintAsBitVect
@@ -139,11 +139,11 @@ def custom_features_generator(mol: Molecule, list_mols: List[Molecule]) -> np.nd
 	return DataStructs.BulkTanimotoSimilarity(feature_mol, feature_list_mols)
 
 
-@register_features_generator('map4')
-def map4_features_generator(mol: Molecule) -> np.ndarray:
-	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	map4_calculator = MAP4Calculator()
-	return np.array(map4_calculator.calculate(mol))
+# @register_features_generator('map4')
+# def map4_features_generator(mol: Molecule) -> np.ndarray:
+# 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+# 	map4_calculator = MAP4Calculator()
+# 	return np.array(map4_calculator.calculate(mol))
 
 
 @register_features_generator('avalon')

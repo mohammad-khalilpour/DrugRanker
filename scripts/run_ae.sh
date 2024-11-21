@@ -18,7 +18,7 @@ for bs in ${batch[@]}; do
 	for outd in ${outdim[@]}; do
 		save_dir="${expt_dir}/all_bs_${bs}_outd_${outd}/fold_${fold}/"
 		mkdir -p $save_dir
-		python src/train_ae.py --genexp_file $gexp_file --splits_path data/${data}/LCO/pletorg/fold_${fold}/ \
+		python3 src/train_ae.py --genexp_file $gexp_file --splits_path data/${data}/LCO/pletorg/fold_${fold}/ \
 		--save_path $save_dir --ae_out_size $outd --bs $bs --cuda > $save_dir/train.log
 	done
 done

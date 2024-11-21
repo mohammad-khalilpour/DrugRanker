@@ -89,7 +89,7 @@ def train_ae(args):
 
     model = AE(args).to(args.device)
     if os.path.exists(args.save_path + 'model.pt'):
-        load_model(model, args.save_path+ 'model.pt', device=args.device)
+        load_model(model, args.save_path + 'model.pt', device=args.device)
         print('Saved model found... resuming training')
 
     loss_fn = nn.MSELoss()
@@ -140,7 +140,11 @@ def train_ae(args):
     print(f'Best model saved for epoch {best_epoch}')
 
     # just check loading
-    load_model(model, args.save_path, args.device)
+    if os.path.exists(args.save_path + 'model.pt'):
+        load_model(model, args.save_path + 'model.pt', args.device)
+    else:
+        print(f"LOAD THE MODEL WITHOUT model.pt!!!")
+        load_model(model, args.save_path, args.device)
     print(f'{evaluate(model, val_loader, loss_fn, args.device):.3f}')
 
 
