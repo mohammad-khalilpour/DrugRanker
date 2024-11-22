@@ -3,22 +3,7 @@ import numpy as np
 from pathlib import Path
 import ast
 
-def read_txt():
-    pass
-
-def save_results():
-    pass
-
-def main():
-    # Define the log file path
-    exp_dir = Path("/media/external_10TB/faraz_sarmeili/DrugRanker/expts/result")
-    setup = "LCO"
-    ds_name = "ctrp"
-    target_model = "neuralndcg"
-    representation = "layered_rdkit"
-    results_dir = exp_dir / setup / ds_name / target_model / representation
-    file_path = list(results_dir.rglob("./logs/avg*.txt"))[0]
-
+def get_df_from_txt(file_path):
     # Open and read the file
     with open(file_path, 'r') as file:
         log_content = file.readlines()
@@ -35,17 +20,43 @@ def main():
     if not all(len(l) == the_len for l in it):
         raise ValueError('not all lists have same length!')
     
-    df = pd.DataFrame(logs_list)
-    print(df)
-    # columns = ["mode", "epoch", "fold"]
-    # METRICS = ['CI', 'lCI', 'sCI', 'ktau', 'sp']
-    # Kpos = [1,3,5,10,20,40,60]
-    # for k in Kpos:
-    #     METRICS += [f'AP@{k}', f'AH@{k}', f'NDCG@{k}']
-    # columns += METRICS
+    return pd.DataFrame(logs_list)
 
-    # results_df = pd.read_csv(file_path, header=None, names=columns)
-    # print(results_df)
+def main():
+    # Define the log file path
+    exp_dir = Path("/media/external_16TB_1/kian_khalilpour/DrugRanker/expts/result/")
+    setup = "LCO"
+    ds_name = "ctrp"
+    target_model = "lambdarank"
+    representation = "layered_rdkit"
+    results_dir = exp_dir / setup / ds_name / target_model / representation
+    file_paths = list(results_dir.rglob("logs/results*.txt"))
+
+    dfs_list = [get_df_from_txt(p) for p in file_paths]
+    max_num_epoch = min([df["epoch"].max() for df in dfs_list])
+    modes = np.unique([np.unique(df["mode"].values) for df in dfs_list])
+    log_steps = 5
+
+    # concatenate them
+    df_concat = pd.concat(dfs_list)
+    avg_results = []
+    for i in range(log_steps, max_num_epoch+1, log_steps):
+        for m in modes:
+            row = df_concat[(df_concat["epoch"]==i) &
+                            (df_concat["mode"]==m)].iloc[:, :-2].mean()
+            row['mode'] = m
+            row['epoch'] = i
+            avg_results.append(row)
+
+    avg_results_df = pd.concat(avg_results, axis=1).T
+    avg_results_df.to_csv((results_dir / "logs/results_avg.csv"), index=False)
+    
+    target_modes = ["TEST"]
+    for m in target_modes:
+        print(f"Results for {m} Set")
+        for c in avg_results_df.columns:
+            print("    ", end="")
+            print(f"{c}: {avg_results_df[(avg_results_df['epoch']==max_num_epoch) & (avg_results_df['mode']==m)][c].values[0]}")
 
 if __name__ == "__main__":
     main()
