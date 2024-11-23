@@ -24,11 +24,11 @@ def get_df_from_txt(file_path):
 
 def main():
     # Define the log file path
-    exp_dir = Path("/media/external_16TB_1/kian_khalilpour/DrugRanker/expts/result/")
+    exp_dir = Path("/media/external_10TB/faraz_sarmeili/DrugRanker/expts/result")
     setup = "LCO"
     ds_name = "ctrp"
-    target_model = "lambdarank"
-    representation = "layered_rdkit"
+    target_model = "lambdaloss"
+    representation = "atom_pair"
     results_dir = exp_dir / setup / ds_name / target_model / representation
     file_paths = list(results_dir.rglob("logs/results*.txt"))
 
