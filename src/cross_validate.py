@@ -203,13 +203,14 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
     `dataset` is a dictionary of `cell_ID, drug_ID: auc`  
     `splits` is a list of dictionary with keys (train, test)
     """
-    args.device = torch.device("cuda:0" if torch.cuda.is_available() and args.cuda else "cpu")
+    
+    args.device = torch.device(args.desired_device if torch.cuda.is_available() and args.cuda else "cpu")
 
     argparse_dict = vars(args)
     if args.device == torch.device('cpu'):
         argparse_dict['device'] = 'cpu'
     else:
-        argparse_dict['device'] = 'cuda:0'
+        argparse_dict['device'] = args.desired_device
 
     if args.only_fold <= 0:
         with open(os.path.join(args.save_path, 'config.json'), 'w') as fjson:

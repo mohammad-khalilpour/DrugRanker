@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np 
 from pathlib import Path
 import ast
+from utils.args import parse_args
+
 
 def get_df_from_txt(file_path):
     # Open and read the file
@@ -22,20 +24,21 @@ def get_df_from_txt(file_path):
     
     return pd.DataFrame(logs_list)
 
-def main():
+def main(args):
     # Define the log file path
-    exp_dir = Path("/media/external_10TB/faraz_sarmeili/DrugRanker/expts/result")
+    '''exp_dir = Path("/media/external_10TB/faraz_sarmeili/DrugRanker/expts/result")
     setup = "LCO"
     ds_name = "ctrp"
-    target_model = "lambdaloss"
+    target_model = "lambdarank"
     representation = "atom_pair"
-    results_dir = exp_dir / setup / ds_name / target_model / representation
+    results_dir = exp_dir / setup / ds_name / target_model / representation'''
+    results_dir = Path(args.save_path)
     file_paths = list(results_dir.rglob("logs/results*.txt"))
 
     dfs_list = [get_df_from_txt(p) for p in file_paths]
     max_num_epoch = min([df["epoch"].max() for df in dfs_list])
     modes = np.unique([np.unique(df["mode"].values) for df in dfs_list])
-    log_steps = 5
+    log_steps = args.log_steps
 
     # concatenate them
     df_concat = pd.concat(dfs_list)
@@ -59,4 +62,4 @@ def main():
             print(f"{c}: {avg_results_df[(avg_results_df['epoch']==max_num_epoch) & (avg_results_df['mode']==m)][c].values[0]}")
 
 if __name__ == "__main__":
-    main()
+    main(parse_args())

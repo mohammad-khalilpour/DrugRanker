@@ -18,6 +18,7 @@ def parse_args(args = None):
         )
 
     # General
+    parser.add_argument('--desired_device',type=str, default='cuda:0', help='which gpu to use')
     parser.add_argument('--cuda', action = 'store_true', help = 'use GPU')
     parser.add_argument('--kfold', type=int, default=5)
     parser.add_argument('--only_fold', type=int, default=-1)
