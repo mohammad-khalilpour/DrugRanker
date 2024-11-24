@@ -1,5 +1,6 @@
 import sys
 import logging
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -20,8 +21,39 @@ from training.eval import evaluate
 
 
 SEED = 123
-logger = logging.getLogger('train.log')
-logger.setLevel(logging.DEBUG)
+# logger = logging.getLogger('train.log')
+# logger.setLevel(logging.DEBUG)
+
+# # Print to the terminal
+# log_level = logging.DEBUG
+# logging.root.setLevel(log_level)
+# formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+# stream = logging.StreamHandler()
+# stream.setLevel(log_level)
+# stream.setFormatter(formatter)
+# log = logging.getLogger("pythonConfig")
+# if not log.hasHandlers():
+#     log.setLevel(log_level)
+#     log.addHandler(stream)
+
+# # file handler:
+# root_path
+# file_handler = logging.FileHandler(Path(root_path / "train_.log"), mode="w")
+# file_handler.setLevel(log_level)
+# file_handler.setFormatter(formatter)
+# log.addHandler(file_handler)
+
+# Print to the terminal
+log_level = logging.DEBUG
+logging.root.setLevel(log_level)
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+stream = logging.StreamHandler()
+stream.setLevel(log_level)
+stream.setFormatter(formatter)
+logger = logging.getLogger("pythonConfig")
+if not logger.hasHandlers():
+    logger.setLevel(log_level)
+    logger.addHandler(stream)
 
 def log_metrics(metric, mode, epoch, fold=None):
     # print("mode", "epoch", "fold", sep=',', end=',')
@@ -337,6 +369,13 @@ def main(args):
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
 
+    # file handler:
+    root_path = Path(args.save_path)
+    file_handler = logging.FileHandler(Path(root_path / f"logs/train_{args.only_fold}.log"), mode="w")
+    file_handler.setLevel(log_level)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
     cross_validate(args, data, splits, thresholds)
 
 
