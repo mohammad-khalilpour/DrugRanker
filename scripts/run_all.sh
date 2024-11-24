@@ -1,10 +1,6 @@
 #!/bin/bash
 
-
-DATA_FOLDER="data/prism"
-DATA_SET="prism"
 genexp_path='data/CCLE/CCLE_expression.csv'
-save_path="expts/result/LCO/$DATA_SET/"
 log_steps=5
 max_iter=100
 num_folds=5
@@ -14,9 +10,12 @@ device=${1:-'cuda:0'}
 # representations=('morgan_count' 'avalon' 'atom_pair' '2d_pharmacophore' 'layered_rdkit')
 # setups=("LCO" "LRO")
 
-models=("lambdaloss" "lambdarank")
-representations=("morgan_count")
-setups=("LRO")
+models=("lambdaloss")
+representations=("atom_pair" "morgan_count" "layered_rdkit")
+setups=("LCO")
+
+DATA_SET="prism"
+DATA_FOLDER="data/$DATA_SET"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
