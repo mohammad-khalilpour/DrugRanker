@@ -29,7 +29,6 @@ class PairPushLoss(nn.Module):
             bloss += self.beta*torch.mean(self.loss(-sign[nn_pairs]*diff[nn_pairs]), dim=0)
         return bloss
 
-
 class ListOneLoss(nn.Module):
     def __init__(self, M=1):
         super(ListOneLoss, self).__init__()
@@ -41,7 +40,6 @@ class ListOneLoss(nn.Module):
         pred_log = torch.log(pred_max)
         return torch.mean(-torch.sum(true_max*pred_log))
 
-
 class ListAllLoss(nn.Module):
     def __init__(self, M=0.5):
         super(ListAllLoss, self).__init__()
@@ -52,10 +50,9 @@ class ListAllLoss(nn.Module):
         pred_log = torch.log(pred_max)
         return torch.mean(-torch.sum(y_label*pred_log))
 
-
 class LambdaLoss(nn.Module):
-    def __init__(self, eps=1e-10, padded_value_indicator=-1, weighing_scheme=None, k=10, sigma=1.0, mu=10.0,
-                 reduction="sum", reduction_log="binary"):
+    def __init__(self, eps=1e-10, padded_value_indicator=-1, weighing_scheme=None, k=None, sigma=1.0, mu=10.0,
+                 reduction="mean", reduction_log="binary"):
         super(LambdaLoss, self).__init__()
         self.eps = eps
         self.padded_value_indicator = padded_value_indicator
@@ -68,10 +65,13 @@ class LambdaLoss(nn.Module):
 
     def forward(self, y_pred, y_true):
         device = y_pred.device
-        y_pred = y_pred.clone()
+        y_pred = y_pred.clone() 
         y_true = y_true.clone()
 
+        k = self.k or y_true.shape[1]
+
         y_true = y_true.float()
+        y_true = (y_true.max()-y_true) + y_true.min()
 
         padded_mask = y_true == self.padded_value_indicator
         y_pred[padded_mask] = float("-inf")
@@ -123,11 +123,69 @@ class LambdaLoss(nn.Module):
 
         return loss
 
-
 def lambdaRank_scheme(G, D, *args):
     return torch.abs(torch.pow(D[:, :, None], -1.) - torch.pow(D[:, None, :], -1.)) * torch.abs(G[:, :, None] - G[:, None, :])
 
+class ApproxNDCGLoss(nn.Module):                 
+    def __init__(self, eps=1e-10, padded_value_indicator=-1, alpha=1.):
+        """
+        :param eps: epsilon value, used for numerical stability
+        :param padded_value_indicator: an indicator of the y_true index containing a padded item, e.g. -1
+        :param alpha: score difference weight used in the sigmoid function
+        """
+        super(ApproxNDCGLoss, self).__init__()
+        self.eps = eps
+        self.padded_value_indicator = padded_value_indicator
+        self.alpha = alpha
 
+    def forward(self, y_pred, y_true):
+        """
+        Loss based on approximate NDCG introduced in "A General Approximation Framework for Direct Optimization of
+        Information Retrieval Measures". Please note that this method does not implement any kind of truncation.
+        :param y_pred: predictions from the model, shape [batch_size, slate_length]
+        :param y_true: ground truth labels, shape [batch_size, slate_length]
+        :return: loss value, a torch.Tensor
+        """
+        device = y_pred.device
+        y_pred = y_pred.clone()
+        y_true = y_true.clone()
+
+        y_true = y_true.float()
+        y_true = (y_true.max()-y_true) + y_true.min()
+
+        padded_mask = y_true == self.padded_value_indicator
+        y_pred[padded_mask] = float("-inf")
+        y_true[padded_mask] = float("-inf")
+
+        # Here we sort the true and predicted relevancy scores.
+        y_pred_sorted, indices_pred = y_pred.sort(descending=True, dim=-1)
+        y_true_sorted, _ = y_true.sort(descending=True, dim=-1)
+
+        # After sorting, we can mask out the pairs of indices (i, j) containing index of a padded element.
+        true_sorted_by_preds = torch.gather(y_true, dim=1, index=indices_pred)
+        true_diffs = true_sorted_by_preds[:, :, None] - true_sorted_by_preds[:, None, :]
+        padded_pairs_mask = torch.isfinite(true_diffs)
+        padded_pairs_mask.diagonal(dim1=-2, dim2=-1).zero_()
+
+        # Here we clamp the -infs to get correct gains and ideal DCGs (maxDCGs)
+        true_sorted_by_preds.clamp_(min=0.)
+        y_true_sorted.clamp_(min=0.)
+
+        # Here we find the gains, discounts and ideal DCGs per slate.
+        pos_idxs = torch.arange(1, y_pred.shape[1] + 1).to(device)
+        D = torch.log2(1. + pos_idxs.float())[None, :]
+        maxDCGs = torch.sum((torch.pow(2, y_true_sorted) - 1) / D, dim=-1).clamp(min=self.eps)
+        G = (torch.pow(2, true_sorted_by_preds) - 1) / maxDCGs[:, None]
+
+        # Here we approximate the ranking positions according to Eqs 19-20 and later approximate NDCG (Eq 21)
+        scores_diffs = (y_pred_sorted[:, :, None] - y_pred_sorted[:, None, :])
+        scores_diffs[~padded_pairs_mask] = 0.
+        approx_pos = 1. + torch.sum(padded_pairs_mask.float() * (torch.sigmoid(-self.alpha * scores_diffs).clamp(min=self.eps)), dim=-1)
+        approx_D = torch.log2(1. + approx_pos)
+        approx_NDCG = torch.sum((G / approx_D), dim=-1)
+
+        return -torch.mean(approx_NDCG)
+        
 class NeuralNDCG(nn.Module):
     def __init__(self, padded_value_indicator=-1, temperature=1.0, powered_relevancies=True, k=None,
                  stochastic=False, n_samples=32, beta=0.1, log_scores=True):
@@ -143,6 +201,9 @@ class NeuralNDCG(nn.Module):
 
     def forward(self, y_pred, y_true):
         dev = y_pred.device
+
+        y_true = y_true.float()
+        y_true = (y_true.max()-y_true) + y_true.min()
 
         k = self.k or y_true.shape[1]
         mask = (y_true == self.padded_value_indicator)

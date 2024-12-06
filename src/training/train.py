@@ -48,7 +48,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
                 batch_loss = criterion(pred, torch.tensor(aucs, device=pred.device))
             elif args.model == 'listall':
                 batch_loss = criterion(pred.reshape(1,-1), torch.tensor(labels, device=pred.device).reshape(1,-1))
-            elif args.model == 'lambdarank' or args.model == 'neuralndcg' or args.model == 'lambdaloss':
+            elif args.model == 'lambdarank' or args.model == 'neuralndcg' or args.model == 'lambdaloss' or args.model == 'approxndcg':
                 batch_loss = criterion(pred.reshape(1,-1), torch.tensor(aucs, device=pred.device).reshape(1,-1))
             else:
                 raise ValueError('Invalid listwise model name')

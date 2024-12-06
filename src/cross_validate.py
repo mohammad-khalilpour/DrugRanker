@@ -12,7 +12,8 @@ from utils.args import parse_args
 from utils.common import *
 from utils.nn_utils import compute_pnorm, compute_gnorm, param_count, EarlyStopping
 from models.ranknet import RankNet
-from models.loss import PairPushLoss, ListOneLoss, ListAllLoss, LambdaLoss, lambdaRank_scheme, NeuralNDCG
+from models.loss import (PairPushLoss, ListOneLoss, ListAllLoss, LambdaLoss, 
+                            lambdaRank_scheme, NeuralNDCG, ApproxNDCGLoss)
 from dataloader.loader import CellLine, MoleculePoint, MoleculeDatasetTrain, MoleculeDatasetTest
 from dataloader.utils import *
 
@@ -165,7 +166,8 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     early_stop = EarlyStopping(patience=args.log_steps)
     
     for epoch in range(1, args.max_iter+1):
-        if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss']:
+        ## TODO: need to be reconsidered
+        if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss', 'approxndcg']:
             loss, gnorm = train_step_listnet(clobj, model, train_dataloader, criterion, optimizer, epoch, args)
         else:
             loss, gnorm = train_step(clobj, model, train_dataloader, criterion, optimizer, epoch, args)
@@ -273,7 +275,9 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             #train_index, test_index = list(range(len(dataset)*4//5)), list(range(len(dataset)*4//5, len(dataset)))
 
         # initialize the model
-        if args.model in ['pairpushc', 'listone', 'listall', 'lambdaloss', 'lambdarank', 'neuralndcg']:
+        ## TODO: need to be reconsidered
+        if args.model in ['pairpushc', 'listone', 'listall', 'lambdaloss',
+                            'lambdarank', 'neuralndcg', 'approxndcg']:
             model = RankNet(args)
         else:
             # many other models which were implemented but not used in the paper
@@ -297,6 +301,8 @@ def cross_validate(args, dataset, splits=None, thresholds=None):
             criterion = LambdaLoss(weighing_scheme=lambdaRank_scheme)
         elif args.model == 'neuralndcg':
             criterion = NeuralNDCG()
+        elif args.model == 'approxndcg':
+            criterion = ApproxNDCGLoss()
         else:
             ## many other models are implemented but not required for the workshop paper
             raise NotImplementedError 
