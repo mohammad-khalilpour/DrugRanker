@@ -87,15 +87,15 @@ class LambdaLoss(nn.Module):
         padded_pairs_mask = padded_pairs_mask & (true_diffs >= 0)
 
         ndcg_at_k_mask = torch.zeros((y_pred.shape[1], y_pred.shape[1]), dtype=torch.bool, device=device)
-        if self.k is not None:
-            ndcg_at_k_mask[:self.k, :self.k] = 1
+        if k is not None:
+            ndcg_at_k_mask[:k, :k] = 1
 
         true_sorted_by_preds.clamp_(min=0.)
         y_true_sorted.clamp_(min=0.)
 
         pos_idxs = torch.arange(1, y_pred.shape[1] + 1).to(device)
         D = torch.log2(1. + pos_idxs.float())[None, :]
-        maxDCGs = torch.sum(((torch.pow(2, y_true_sorted) - 1) / D)[:, :self.k], dim=-1).clamp(min=self.eps)
+        maxDCGs = torch.sum(((torch.pow(2, y_true_sorted) - 1) / D)[:, :k], dim=-1).clamp(min=self.eps)
         G = (torch.pow(2, true_sorted_by_preds) - 1) / maxDCGs[:, None]
 
         if self.weighing_scheme is None:
