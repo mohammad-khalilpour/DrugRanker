@@ -26,7 +26,7 @@ def parse_args(args = None):
 
     # Model and features
     parser.add_argument('--model', type=str, default='listall',
-                        choices=["listone", "listall", "pairpushc", "lambdaloss", "lambdarank", "neuralndcg"])
+                        choices=["listone", "listall", "pairpushc", "lambdaloss", "lambdarank", "neuralndcg", "approxndcg"])
     parser.add_argument('--gnn', type=str,
                         choices=['dmpn'])
     parser.add_argument('--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
