@@ -107,8 +107,8 @@ def rdkit_2d_desc_features_generator(mol: Molecule) -> np.ndarray:
 	features_vec = np.array(list(features_vec.values()))
 
 	# normalized output
-	features = features.astype("float32")
 	features = (features_vec-min(features_vec))/(max(features_vec)-min(features_vec))
+	features = features.astype("float32")
 	features = np.nan_to_num(features)
 
 	return features
