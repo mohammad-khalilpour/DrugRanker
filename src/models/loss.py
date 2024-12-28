@@ -189,7 +189,7 @@ class ApproxNDCGLoss(nn.Module):
         return -torch.mean(approx_NDCG)
         
 class NeuralNDCG(nn.Module):
-    def __init__(self, padded_value_indicator=-1, temperature=1.0, powered_relevancies=True, k=None,
+    def __init__(self, padded_value_indicator=-1, temperature=22.0, powered_relevancies=True, k=None,
                  stochastic=False, n_samples=32, beta=0.1, log_scores=True):
         super(NeuralNDCG, self).__init__()
         self.padded_value_indicator = padded_value_indicator
