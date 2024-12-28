@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as f
 import numpy as np
+# import logging
+from pathlib import Path
 
 
 class PairPushLoss(nn.Module):
@@ -204,6 +206,9 @@ class NeuralNDCG(nn.Module):
 
         y_true = y_true.float()
         y_true = (y_true.max()-y_true) + y_true.min()
+
+        #scalling
+        y_true = (y_true-y_true.min())/(y_true.max()-y_true.min())
 
         k = self.k or y_true.shape[1]
         mask = (y_true == self.padded_value_indicator)
