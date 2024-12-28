@@ -29,7 +29,7 @@ def parse_args(args = None):
                         choices=["listone", "listall", "pairpushc", "lambdaloss", "lambdarank", "neuralndcg", "approxndcg"])
     parser.add_argument('--gnn', type=str,
                         choices=['dmpn'])
-     parser.add_argument('--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
+    parser.add_argument('--feature_gen', default='morgan_count', choices=['morgan', 'morgan_count',
                         'map4', 'avalon', 'atom_pair', '2d_pharmacophore', 'layered_rdkit', 'rdkit_2d', 
                         'rdkit_2d_desc', 'rdkit2d_morganc', 'rdkit2d_morgan'],
                         help='Without `use_features_only`, this will concat molecule level features to learned gnn emb')
