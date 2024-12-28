@@ -8,7 +8,8 @@ from rdkit.Avalon.pyAvalonTools import GetAvalonFP
 from rdkit.Chem.AtomPairs.Pairs import GetAtomPairFingerprintAsBitVect
 from rdkit.Chem.rdMolDescriptors import GetHashedAtomPairFingerprintAsBitVect
 from rdkit.Chem.Pharm2D import Generate, Gobbi_Pharm2D
-
+from rdkit.Chem.Descriptors import CalcMolDescriptors
+# from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
 
 Molecule = Union[str, Chem.Mol]
 FeaturesGenerator = Callable[[Molecule], np.ndarray]
@@ -93,6 +94,24 @@ def morgan_counts_features_generator(mol: Molecule,
 
 	return features
 
+@register_features_generator('rdkit_2d_desc')
+def rdkit_2d_desc_features_generator(mol: Molecule) -> np.ndarray:
+	"""
+	Generates RDKit 2D features for a molecule.
+
+	:param mol: A molecule (i.e. either a SMILES string or an RDKit molecule).
+	:return: A 1D numpy array containing the RDKit 2D features.
+	"""
+	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
+	features_vec = CalcMolDescriptors(mol)
+	features_vec = np.array(list(features_vec.values()))
+
+	# normalized output
+	features = features.astype("float32")
+	features = (features_vec-min(features_vec))/(max(features_vec)-min(features_vec))
+	features = np.nan_to_num(features)
+
+	return features
 
 try:
 	from descriptastorus.descriptors import rdDescriptors, rdNormalizedDescriptors
@@ -124,9 +143,9 @@ try:
 		features = generator.process(smiles)[1:]
 
 		return features
-except ImportError:
+except ImportError as e:
+	print(e)
 	pass
-
 
 @register_features_generator('morgan_tanimoto_bioassay')
 def custom_features_generator(mol: Molecule, list_mols: List[Molecule]) -> np.ndarray:
@@ -138,13 +157,11 @@ def custom_features_generator(mol: Molecule, list_mols: List[Molecule]) -> np.nd
 
 	return DataStructs.BulkTanimotoSimilarity(feature_mol, feature_list_mols)
 
-
 # @register_features_generator('map4')
 # def map4_features_generator(mol: Molecule) -> np.ndarray:
 # 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
 # 	map4_calculator = MAP4Calculator()
 # 	return np.array(map4_calculator.calculate(mol))
-
 
 @register_features_generator('avalon')
 def avalon_features_generator(mol: Molecule, num_bits: int = 1024) -> np.ndarray:
@@ -154,7 +171,6 @@ def avalon_features_generator(mol: Molecule, num_bits: int = 1024) -> np.ndarray
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features
 
-
 @register_features_generator('atom_pair')
 def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
@@ -162,7 +178,6 @@ def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features
-
 
 @register_features_generator('2d_pharmacophore')
 def pharmacophore_2d_features_generator(mol: Molecule) -> np.ndarray:
@@ -183,6 +198,22 @@ def layered_rdkit_features_generator(mol: Molecule) -> np.ndarray:
 	features_vec = AllChem.LayeredFingerprint(mol, fpSize=1024)
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
+	return features
+
+@register_features_generator('rdkit2d_morgan')
+def rdkit2d_morgan_features_generator(mol: Molecule) -> np.ndarray:
+	morgan_features = morgan_binary_features_generator(mol)
+	rdkit_2d_features = rdkit_2d_desc_features_generator(mol)
+
+	features = np.concatenate((morgan_features, rdkit_2d_features))
+	return features
+
+@register_features_generator('rdkit2d_morganc')
+def rdkit2d_morgan_features_generator(mol: Molecule) -> np.ndarray:
+	morgan_features = morgan_counts_features_generator(mol)
+	rdkit_2d_features = rdkit_2d_desc_features_generator(mol)
+
+	features = np.concatenate((morgan_features, rdkit_2d_features))
 	return features
 
 """
