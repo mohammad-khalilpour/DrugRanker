@@ -15,28 +15,28 @@ models=("lambdarank")
 representations=("atom_pair" "morgan_count" "layered_rdkit")
 setups=("LCO")
 
-DATA_SET="prism"
-DATA_FOLDER="data/$DATA_SET"
+data_set="prism"
+data_dir="data/$data_set"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
         for representation in "${representations[@]}"; do
             for fold in $(seq 0 $((num_folds-1))); do
                 if [[ $setup == 'LCO' ]]; then
-                    ae_path="expts/ae/$setup/$DATA_SET/all_bs_64_outd_128/fold_$fold/model.pt"
-                    splits_path="$DATA_FOLDER/$setup/pletorg/"
+                    ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/fold_$fold/model.pt"
+                    splits_path="$data_dir/$setup/pletorg/"
                 elif [[ $setup == 'LRO' ]]; then
-                    ae_path="expts/ae/$setup/$DATA_SET/all_bs_64_outd_128/model.pt"
-                    splits_path="$DATA_FOLDER/$setup/"
+                    ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
+                    splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result/$setup/$DATA_SET/$model/$representation/"
+                save_dir="expts/result/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
-                ( python3 src/cross_validate.py \
+                python3 src/cross_validate.py \
                     --model "$model" \
                     --only_fold $fold \
-                    --data_path "$DATA_FOLDER/$setup/aucs.txt" \
-                    --smiles_path "$DATA_FOLDER/cmpd_smiles.txt" \
+                    --data_path "$data_dir/$setup/aucs.txt" \
+                    --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
                     --pretrained_ae \
@@ -46,7 +46,7 @@ for setup in "${setups[@]}"; do
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --setup "$setup" \
-                    --log_steps $log_steps > $log_dir/results_$((fold+1)).txt & )
+                    --log_steps $log_steps > $log_dir/results_$((fold+1)).txt &
             done
             python3 src/get_results.py \
                 --save_path $save_dir \

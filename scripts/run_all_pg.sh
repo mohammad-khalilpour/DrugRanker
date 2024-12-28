@@ -10,32 +10,33 @@ device=${1:-'cuda:0'}
 # representations=('morgan_count' 'avalon' 'atom_pair' '2d_pharmacophore' 'layered_rdkit')
 # setups=("LCO" "LRO")
 
-models=("listall" "lambdarank")
-representations=("rdkit_2d_desc" "rdkit2d_morgan")
+#  "lambdarank" "neuralndcg" "approxndcg"
+models=("lambdaloss")
+representations=("morgan_count")
 setups=("LCO")
 
-data_set="ctrp"
-data_dir="data/$data_set"
+DATA_SET="ctrp"
+DATA_FOLDER="data/$DATA_SET"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
         for representation in "${representations[@]}"; do
-            for fold in $(seq 0 $((num_folds-1))); do
+            for fold in $(seq 4 $((num_folds-1))); do
                 if [[ $setup == 'LCO' ]]; then
-                    ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/fold_$fold/model.pt"
-                    splits_path="$data_dir/$setup/pletorg/"
+                    ae_path="expts/ae/$setup/$DATA_SET/all_bs_64_outd_128/fold_$fold/model.pt"
+                    splits_path="$DATA_FOLDER/$setup/pletorg/"
                 elif [[ $setup == 'LRO' ]]; then
-                    ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
-                    splits_path="$data_dir/$setup/"
+                    ae_path="expts/ae/$setup/$DATA_SET/all_bs_64_outd_128/model.pt"
+                    splits_path="$DATA_FOLDER/$setup/"
                 fi
-                save_dir="expts/result/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_pg_updated/$setup/$DATA_SET/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \
                     --model "$model" \
                     --only_fold $fold \
-                    --data_path "$data_dir/$setup/aucs.txt" \
-                    --smiles_path "$data_dir/cmpd_smiles.txt" \
+                    --data_path "$DATA_FOLDER/$setup/aucs.txt" \
+                    --smiles_path "$DATA_FOLDER/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
                     --pretrained_ae \
