@@ -22,6 +22,8 @@ class Fingerprint(nn.Module):
             input_dim = 2048
         elif args.feature_gen == 'rdkit2d_morgan' or args.feature_gen == 'rdkit2d_morganc':
             input_dim = 2048 + 210
+        elif args.feature_gen == 'rdkit2d_atompair':
+            input_dim = 1024 + 210
         else:
             input_dim = 1024
 

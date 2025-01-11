@@ -216,6 +216,14 @@ def rdkit2d_morgan_features_generator(mol: Molecule) -> np.ndarray:
 	features = np.concatenate((morgan_features, rdkit_2d_features))
 	return features
 
+@register_features_generator('rdkit2d_atompair')
+def rdkit2d_atompair_features_generator(mol: Molecule) -> np.ndarray:
+	atompair_features = atom_pair_features_generator(mol)
+	rdkit_2d_features = rdkit_2d_desc_features_generator(mol)
+
+	features = np.concatenate((atompair_features, rdkit_2d_features))
+	return features
+
 """
 Custom features generator template.
 
