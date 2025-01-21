@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torchviz import make_dot
 
 from dataloader.loader import to_batchgraph
 from features.features_generators import *
@@ -44,6 +45,10 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
             molgraph = to_batchgraph(mols) if args.gnn else None
 
             pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, output_type=0)
+
+            # plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/mg_attention"
+            # make_dot(pred, params=dict(list(model.named_parameters()))).render(plot_path, format="png")
+
             if args.model == 'listone' :
                 batch_loss = criterion(pred, torch.tensor(aucs, device=pred.device))
             elif args.model == 'listall':
