@@ -23,6 +23,7 @@ def parse_args(args = None):
     parser.add_argument('--kfold', type=int, default=5)
     parser.add_argument('--only_fold', type=int, default=-1)
     parser.add_argument('--setup', type=str, default='LCO', choices=['LCO', 'LRO'])
+    parser.add_argument('--get_results_gnn', type=str, default='aggregate-results', choices=['aggregate-results', 'model-inspection'])
 
     # Model and features
     parser.add_argument('--model', type=str, default='listall',
