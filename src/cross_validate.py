@@ -181,8 +181,10 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         # logging and evaluation at every `log_steps`
         if (epoch) and (epoch % args.log_steps == 0):
             # save models 
-            if (epoch==args.max_iter) or (args.checkpointing and (epoch % 10 == 0)):
+            if (epoch==args.max_iter) or (args.checkpointing) and (epoch % 10 == 0):
                 torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_{epoch}.pt')
+                if args.gnn == "dmpn":
+                    torch.save(model.enc.state_dict(), args.save_path +f'fold_{fold}/gnn_epoch_{epoch}.pt')
 
             pred_scores, true_auc, metric, m_clid, pred_dict = evaluate(clobj, model, val_dataloader, args, Kpos)
             log_metrics(metric, 'VAL', epoch, fold)
