@@ -98,7 +98,7 @@ class RankNet(nn.Module):
         super(RankNet, self).__init__()
         self.enc_type = args.gnn
 
-        if args.feature_gen:
+        if (args.feature_gen is not None) and (args.gnn is None):
             self.enc = Fingerprint(args)
             self.enc_type = args.feature_gen
         elif args.gnn == 'dmpn':
@@ -165,7 +165,8 @@ class RankNet(nn.Module):
                 return cmp1_emb
 
         if 'cell+list-attention' in self.update_emb:
-            return self.te(cmp1_emb.unsqueeze(dim=1)).squeeze(dim=1)
+            output = self.te(cmp1_emb.unsqueeze(dim=1))
+            return output.squeeze(dim=1)
         elif 'list-attention' in self.update_emb:
             output, weights = self.mha(cell_emb, cmp1_emb, cmp1_emb)
             return output

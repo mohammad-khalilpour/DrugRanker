@@ -109,6 +109,7 @@ class MPNN(nn.Module):
 	def readout(self, atom_h, a_scope, mol_graph):
 		mol_vecs = []
 		node_scores = []
+		mol_graphs_list = mol_graph.get_chem_mols()
 		for i, (a_start, a_size) in enumerate(a_scope):
 			if a_size == 0:
 				mol_vecs.append(self.cached_zero_vector)
@@ -116,6 +117,7 @@ class MPNN(nn.Module):
 				temp_h = atom_h.narrow(0, a_start, a_size)
 				mol_vec, scores = self._readout(temp_h)#, mol_graph.smiles_batch[i],\
 												#mol_graph.ic_batch[i], draw)
+				mol_graphs_list[i].draw(weights=list(scores.numpy()), fname=f"molecule_{i}")
 				mol_vecs.append(mol_vec)
 				node_scores.append(scores)
 
@@ -205,7 +207,6 @@ class MPNN(nn.Module):
 
 		#readout
 		mol_vecs, node_scores = self.readout(atom_h, a_scope, mol_graph)
-
 		#if self.feature_gen:
 		#	features_batch = torch.from_numpy(np.stack(features)).float().to(self.device) # type: ignore
 		#	mol_vecs = torch.cat([mol_vecs, features_batch], dim=1)

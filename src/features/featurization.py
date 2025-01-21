@@ -1,8 +1,12 @@
 from typing import List, Tuple, Union
 
 import numpy as np
-from rdkit import Chem
 import torch
+
+from rdkit import Chem
+from rdkit.Chem import Draw, AllChem
+from rdkit.Chem.Draw import rdMolDraw2D
+from rdkit.Chem.Draw import SimilarityMaps
 
 # Atom feature sizes
 MAX_ATOMIC_NUM = 100
@@ -137,7 +141,7 @@ class MolGraph:
 			self.smiles = mol
 			mol = Chem.MolFromSmiles(mol)
 		"""
-
+		self.mol = mol
 		self.n_atoms = 0  # number of atoms
 		self.n_bonds = 0  # number of bonds
 		self.f_atoms = []  # mapping from atom index to atom features
@@ -182,6 +186,23 @@ class MolGraph:
 
 	def set_bond_feature(self, fbond):
 		self.f_bonds = fbond
+
+	def get_chem_mol(self):
+		return self.mol
+	
+	def draw(self, weights=None, fname="molecule", to_save=True):
+		if weights is None: 
+			weights = list(range(self.n_atoms))
+		d2d = Draw.MolDraw2DCairo(400, 400)
+		img = SimilarityMaps.GetSimilarityMapFromWeights(mol=self.mol, 
+													weights=weights, 
+													draw2d=d2d, 
+													colorMap=None, 
+													# contourLines=10
+                                                    )
+		if to_save:
+			d2d.WriteDrawingText(f"/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/molecules/{fname}.png")
+
 	'''
 	def get_components(self, atom_messages: bool = False) -> Tuple[torch.FloatTensor, torch.FloatTensor,
 									torch.LongTensor, torch.LongTensor, torch.LongTensor]:
@@ -222,6 +243,7 @@ class BatchMolGraph:
 	#	self.smiles_batch = [mol_graph.smiles for mol_graph in mol_graphs]
 #		self.ic_batch = [mol_graph.ic for mol_graph in mol_graphs]
 #		self.cid_batch = [mol_graph.cid for mol_graph in mol_graphs]
+		self.mol_graphs = mol_graphs
 		self.atom_fdim = get_atom_fdim()
 		self.bond_fdim = get_bond_fdim()
 
@@ -310,7 +332,9 @@ class BatchMolGraph:
 			self.a2a = self.b2a[self.a2b]  # num_atoms x max_num_bonds
 
 		return self.a2a # type: ignore
-
+		
+	def get_chem_mols(self):
+		return self.mol_graphs
 
 def mol2graph(mols: Union[List[str], List[Chem.Mol]]) -> BatchMolGraph: # type: ignore
 	"""
