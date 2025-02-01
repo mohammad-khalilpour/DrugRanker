@@ -22,6 +22,16 @@ def get_auc(auc_file):
     return auc, set_clids
 
 
+def get_data(auc_file, smiles_file):
+    cpdid_smiles = get_data_from_smiles(smiles_file)
+    auc, set_clids = get_auc(auc_file)
+    data = []
+    for [cell, cpd], value in auc.items():
+        data.extend([(cpdid_smiles[cpd], cell, value, cpd)])
+
+    return data
+
+
 def get_cv_data_LRO(auc_file, splits_dir):
 
     auc, set_clids = get_auc(auc_file)
