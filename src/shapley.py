@@ -133,28 +133,36 @@ def cell_lines():
     model.load_state_dict(torch.load("../saved_model/epoch_100_1.pt", weights_only=False, map_location=torch.device('cpu')))
     model.eval()
 
+    mask = np.load("../coeff.npy")
+    mask = np.where(mask != 0, 1, 0)
+
+
+
 
     def model_predict(cell_lines):
         cell_lines = torch.tensor(cell_lines, dtype=torch.float32).to(args.device)
         batch_size = cell_lines.shape[0]
+        full_cell_lines = torch.tile(background_cl_emb[0].unsqueeze(0), (batch_size, 1)).to(args.device)
+        full_cell_lines = full_cell_lines.float()
+        full_cell_lines[:, mask == 1] = cell_lines
         features_batch = background_features.repeat((batch_size // background_features.shape[0]) + 1, 1)
         features_batch = features_batch[:batch_size]
 
         with torch.no_grad():
             output = model(
-                clines=cell_lines,
+                clines=full_cell_lines,
                 feat1=features_batch,
                 output_type=0
             )
 
         return output.cpu().numpy()
 
-    explainer = shap.KernelExplainer(model_predict, background)
-    shap_values = explainer.shap_values(test_data)
+    explainer = shap.KernelExplainer(model_predict, background[:, mask == 1])
+    shap_values = explainer.shap_values(test_data[:, mask == 1])
 
     shap_exp = shap.Explanation(values=shap_values,
                                 base_values=explainer.expected_value,
-                                data=test_cl_emb)
+                                data=test_cl_emb[:, mask == 1])
 
     shap.plots.waterfall(shap_exp[0], max_display=20)
     shap.plots.waterfall(shap_exp[1], max_display=20)

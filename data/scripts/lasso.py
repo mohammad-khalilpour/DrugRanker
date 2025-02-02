@@ -39,14 +39,14 @@ for i, drug in enumerate(drugs):
         X.append(expression[cid])
         y.append(sens[j])
 
-    #print(f'Fitting for drug: {drug}')
+    print(f'Fitting for drug: {i}')
     enet = ElasticNet(random_state=0, max_iter=1000, l1_ratio=0.1)
     enet.fit(X, y)
     coeff.append(enet.coef_)
 
 coeff = np.asarray(coeff)
 print('Done fitting')
-
+np.save("coeff.txt", np.sum(coeff, axis=0))
 # select genes with non-zero coefficient
 sel_genes = genes[np.sum(coeff, axis=0).nonzero()[0]]
 np.savetxt(args.data_dir+'genes.txt', sel_genes, fmt='%s', delimiter='\n')
