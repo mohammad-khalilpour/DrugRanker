@@ -137,8 +137,6 @@ def cell_lines():
     mask = np.where(mask != 0, 1, 0)
 
 
-
-
     def model_predict(cell_lines):
         cell_lines = torch.tensor(cell_lines, dtype=torch.float32).to(args.device)
         batch_size = cell_lines.shape[0]
@@ -147,7 +145,7 @@ def cell_lines():
         full_cell_lines[:, mask == 1] = cell_lines
         features_batch = background_features.repeat((batch_size // background_features.shape[0]) + 1, 1)
         features_batch = features_batch[:batch_size]
-
+        np.argsort()
         with torch.no_grad():
             output = model(
                 clines=full_cell_lines,
