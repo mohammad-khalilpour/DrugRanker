@@ -49,85 +49,70 @@ def features():
         auc_points.append(MoleculePoint(*d, features=features[d[0]], feature_gen=args.feature_gen, in_test=False))
 
     dataset = MoleculeDatasetTest(auc_points)
-    dataloader = DataLoader(dataset, shuffle=False, batch_size=1000, collate_fn=dataset.collate_fn)
+    dataloader = DataLoader(dataset, shuffle=False, batch_size=5000, collate_fn=dataset.collate_fn)
 
     batch = next(iter(dataloader))
 
     features_batch = [d.features for d in batch]
     clids = [d.clid for d in batch]
 
-    cl_emb = torch.from_numpy(np.array(clobj.get_expression(clids))).to(args.device)
+    cl_emb = torch.from_numpy(np.unique(np.array(clobj.get_expression(clids)), axis=0)).to(args.device)
+    background_cl_emb = cl_emb[:2]
+    test_cl_emb = cl_emb[2:4]
+    original_cell_line = cl_emb[7]
+    print(original_cell_line.shape)
 
-    background_clids = cl_emb[0]
+    features = np.unique(features_batch, axis=0)[:15]
 
-    background_features = np.unique(features_batch, axis=0)[:10]
-    test_features = np.unique(features_batch, axis=0)[-25:]
-
-    background = numpy.array(background_features)
-    test_data = numpy.array(test_features)
+    background = numpy.array(background_cl_emb)
+    test_data = numpy.array(test_cl_emb)
 
     model = RankNet(args).to(args.device)
     model.load_state_dict(torch.load("../saved_model/epoch_100_1.pt", weights_only=False, map_location=torch.device('cpu')))
     model.eval()
 
+    mask = np.load("../coeff.npy")
+    mask = np.where(mask != 0, 1, 0)
+
     def model_predict(
-            array,
-            features,
+            cell_line_batch,
             similarity_coefficient=lambda x, y: kendalltau(x, y)[0],
             mixed_type_input=False,
     ):
-        features = torch.tensor(features, dtype=torch.float32).to(args.device)
-        batch_size = features.shape[0]
-        clids_batch = background_clids.repeat((batch_size // background_clids.shape[0]) + 1, 1)
-        clids_batch = clids_batch[:batch_size]
-
+        cell_line_batch = torch.tensor(cell_line_batch, dtype=torch.float32).to(args.device)
+        batch_size = cell_line_batch.shape[0]
+        full_cell_lines = torch.tile(background_cl_emb[0].unsqueeze(0), (batch_size, 1)).to(args.device)
+        full_cell_lines = full_cell_lines.float()
+        full_cell_lines[:, mask == 1] = cell_line_batch
         pred = model(
-            clines=clids_batch,
+            clines=original_cell_line,
             feat1=features,
             output_type=0
         )
         og_rank = rank_list(pred)
 
-        if not mixed_type_input:
-            adjusted_features = np.array(
-                [[np.where(a == 0, q, a) for q in features] for a in array]
-            )
-        else:
-            adjusted_features = np.array(
-                [
-                    [pd.Series(q).where(pd.isna(a), a).values for q in features]
-                    for a in array
-                ]
-            )
-
         scores = []
-        for features_background_sample in adjusted_features:
+        for cell_line in full_cell_lines:
             new_pred = model(
-                clines=clids_batch,
-                feat1=features_background_sample,
+                clines=cell_line,
+                feat1=features,
                 output_type=0
             )
             new_rank = rank_list(new_pred)
-
             scores.append(similarity_coefficient(og_rank, new_rank))
-        print(scores)
+
         return np.array(scores)
 
     explainer = shap.KernelExplainer(
-        convert_to_model(
-            partial(model_predict, features=test_data)
-        ),
-        background
+        model_predict,
+        background[:, mask == 1]
     )
 
-    vector_of_zeros = np.array([np.full(test_data[0].shape, 0)])
-
-    shap_values = explainer.shap_values(vector_of_zeros)
-    test_features = np.array(test_features)
+    shap_values = explainer.shap_values(test_data[:, mask == 1])
 
     shap_exp = shap.Explanation(values=shap_values,
                                 base_values=explainer.expected_value,
-                                data=test_features)
+                                data=test_cl_emb[:, mask == 1])
 
     shap.plots.waterfall(shap_exp[0], max_display=14)
     # shap.plots.waterfall(shap_exp[1], max_display=14)
