@@ -68,9 +68,9 @@ def parse_args(args = None):
     parser.add_argument('--atom_messages', action = 'store_true')
     parser.add_argument('--update_emb', default='None',
                     choices=['cell-attention', 'list-attention', 'cell+list-attention', 
-                            'ppi-attention', 'lasso-attention', 'drug+ppi-attention',
-                            'enc+ppi-attention', 'attention+enc', 'res+ppi-attention',
-                            'res+lasso-attention'], \
+                            'ppi-attention', 'lasso-attention', 'drug-attention',
+                            'drug+ppi-attention', 'enc+ppi-attention', 'attention+enc', 
+                            'res+ppi-attention', 'res+lasso-attention'], \
                     help='how to convolve comp embeddings to create context vector')
     parser.add_argument('--agg_emb', default='sum', choices=['self', 'concat', 'sum'],
                      help='how to update comp embeddings from context vector')

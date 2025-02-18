@@ -1,5 +1,8 @@
 from pathlib import Path
 from utils.args import parse_args
+import logging
+
+logger = logging.getLogger("pythonConfig")
 
 import numpy as np
 import pandas as pd
@@ -161,14 +164,15 @@ def predict(args, clobj, model, test_dataloader, verbose_mha=False):
             # print(f"clids: {clids}")
             # print(f"features: {features[0].shape}")
             gene_expression = np.array(clobj.get_expression(clids))
-            cl_emb = torch.from_numpy(gene_expression).to(args.device).to(args.device)
+            normalized_gene_expression = np.array(clobj.get_normalized_expression(clids))
+            cl_emb = torch.from_numpy(gene_expression).to(args.device)
             cl_emb2 = None
             if args.update_emb in ["ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
-                cl_emb = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device)
+                cl_emb = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
             elif args.update_emb in ["enc+ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
-                cl_emb2 = torch.from_numpy(gene_expression[:, selected_gindices]).to(args.device).to(args.device)
+                cl_emb2 = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
             elif args.update_emb in ["res+ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
                 res_indices = np.delete(np.arange(gene_expression.shape[1]), selected_gindices)
@@ -188,6 +192,10 @@ def predict(args, clobj, model, test_dataloader, verbose_mha=False):
 
             if clids[0] not in aw_outputs:
                 aw_outputs[clids[0]] = list(get_feat_vector(input, model)[0].to("cpu").numpy().flatten())
+                if np.isnan(aw_outputs[clids[0]]).any():
+                    logger.info(f"three exists null values in {clids[0]}...")
+                    logger.info(f"{aw_outputs[clids[0]]}")
+                
             if verbose_mha:
                 print(f"{clids} weights: {np.shape(aw_outputs[clids])}")
                 print(f"{clids} weights: {aw_outputs[clids]}")
@@ -213,6 +221,11 @@ def main(args):
 
     args.device = torch.device(args.desired_device if torch.cuda.is_available() and args.cuda else "cpu")
 
+    ## create logger
+    root_path = Path(args.save_path)
+    file_handler = logging.FileHandler(Path(root_path / f"logs/test_{args.only_fold}.log"), mode="w")
+    logger.addHandler(file_handler)
+    
     ## data loading
     clobj, data_loaders = get_dataloader(args, data, splits, thresholds)
 
@@ -225,10 +238,12 @@ def main(args):
 
     for item in data_loaders:
         fold, dloader = item
+        if fold == 4:
+            continue
         print(dloader)
         ## model loading
         fold_path = Path(args.save_path) / f'fold_{fold}' 
-        model_path = list(fold_path.rglob("./epoch_*.pt"))[0]
+        model_path = list(fold_path.rglob("./epoch_1*.pt"))[0]
         print(f"model_path: {model_path}")
         gene_aw_path = list(fold_path.rglob("./gene_aw_epoch*.npy"))[0]
         gene_aw = np.load(gene_aw_path)

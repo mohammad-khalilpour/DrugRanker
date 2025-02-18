@@ -30,7 +30,7 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/enc_ppi_atten/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/drug_atten/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \
@@ -45,7 +45,7 @@ for setup in "${setups[@]}"; do
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "enc+ppi-attention" \
+                    --update_emb "drug-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --selected_genexp_path "$selected_genexp_path" \
