@@ -9,15 +9,16 @@ device=${1:-'cuda:0'}
 # representations=('morgan_count' 'avalon' 'atom_pair' '2d_pharmacophore' 'layered_rdkit')
 # setups=("LCO" "LRO")
 
-models=("lambdaloss")
-representations=("atom_pair")
+models=("lambdarank")
+representations=("rdkit2d_atompair")
 setups=("LCO")
 
-data_set="ctrp"
+data_set="prism"
 data_dir="data/$data_set"
 genexp_path='data/CCLE/CCLE_expression.csv'
 # genexp_path="data/CCLE/CCLE_expression_${data_set}_w20.csv"
-selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}.npy"
+# selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}.npy"
+selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}19.npy"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
@@ -36,6 +37,7 @@ for setup in "${setups[@]}"; do
                 python3 src/cross_validate.py \
                     --model "$model" \
                     --only_fold $fold \
+                    --gene_in_size 4899 \
                     --data_path "$data_dir/$setup/aucs.txt" \
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \

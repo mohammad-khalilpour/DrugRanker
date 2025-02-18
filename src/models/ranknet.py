@@ -261,8 +261,8 @@ class RankNet(nn.Module):
             self.te = nn.TransformerEncoder(te_layer, 1)
         elif self.update_emb in ['ppi-attention', 'enc+ppi-attention', 'res+ppi-attention']:
             self.cell_mha = nn.MultiheadAttention(args.gene_in_size, 1)
-            te_layer = nn.TransformerEncoderLayer(args.gene_in_size, 1, 128)
-            self.te = nn.TransformerEncoder(te_layer, 1)
+            # te_layer = nn.TransformerEncoderLayer(args.gene_in_size, 1, 128)
+            # self.te = nn.TransformerEncoder(te_layer, 1)
         elif self.update_emb in ['attention+enc']:
             self.cell_mha = nn.MultiheadAttention(args.ae_in_size, 1)
         elif self.update_emb in ['drug+ppi-attention']:
