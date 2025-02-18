@@ -27,11 +27,8 @@ args.genexp_path = "../data/CCLE/CCLE_expression.csv"
 if args.device is None:
     args.device = "cpu"
 args.feature_gen = "atom_pair"
-# args.pretrained_ae = True
-# args.trained_ae_path = "../saved_model/model.pt"
 
 
-# args.pretrained_ae = True
 def features():
     data = get_data(args.data_path, args.smiles_path)
     features = precompute_features(args)
