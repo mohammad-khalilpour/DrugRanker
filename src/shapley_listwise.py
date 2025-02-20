@@ -60,9 +60,8 @@ def features():
 
 
     cl_emb = torch.from_numpy(np.array(clobj.get_expression(np.unique(clids, axis=0)))).to(args.device)
-    background_cl_emb = cl_emb[1:3]
-    test_cl_emb = cl_emb[3:5]
-    original_cell_line = cl_emb[0]
+    background_cl_emb = cl_emb[1:5]
+    test_cl_emb = cl_emb[3:5].numpy()
 
     features = np.unique(features_batch, axis=0)
 
@@ -73,11 +72,11 @@ def features():
     model.load_state_dict(torch.load("../saved_model/lambdarank_rdkit2.pt", weights_only=False, map_location=torch.device('cpu')))
     model.eval()
 
-    mask = np.load("../s_g_prism.npy")
-    mask = np.where(mask != 0, 1, 0)
+    indices = np.load("../selected_genes_indices_ctrp.npy")
 
     def model_predict(
             cell_line_batch,
+            original_cell_line,
             similarity_coefficient=lambda x, y: kendalltau(x, y)[0],
             mixed_type_input=False,
     ):
@@ -85,7 +84,7 @@ def features():
         batch_size = cell_line_batch.shape[0]
         full_cell_lines = torch.tile(background_cl_emb[0].unsqueeze(0), (batch_size, 1)).to(args.device)
         full_cell_lines = full_cell_lines.float()
-        full_cell_lines[:, mask == 1] = cell_line_batch
+        full_cell_lines[:, indices] = cell_line_batch
         pred = model(
             clines=original_cell_line,
             feat1=features,
@@ -105,28 +104,34 @@ def features():
 
         return np.array(scores)
 
-    explainer = shap.KernelExplainer(
-        model_predict,
-        background[:, mask == 1]
-    )
 
-    shap_values = explainer.shap_values(test_data[:, mask == 1])
+    shap_values_list = []
+    expected_values_list = []
 
-    # shap_exp = shap.Explanation(values=shap_values,
-    #                             base_values=explainer.expected_value,
-    #                             data=test_cl_emb[:, mask == 1])
+    for i, cell_line in enumerate(test_cl_emb):
+        print(i)
+        explainer = shap.KernelExplainer(
+            convert_to_model(
+                partial(model_predict, original_cell_line=torch.from_numpy(cell_line))
+            ),
+            background[:, indices]
+        )
+        shap_values = explainer.shap_values(cell_line[indices])
+
+        shap_values_list.append(shap_values)
+        expected_values_list.append(explainer.expected_value)
 
     shap_df = pd.DataFrame(
-        shap_values,
-        columns=[f"Feature_{i}" for i in range(shap_values.shape[1])]
+        np.array(shap_values_list),
+        columns=[f"Feature_{i}" for i in indices]
     )
 
-    shap_df["Base Value"] = explainer.expected_value
+    shap_df["Base Value"] = expected_values_list
 
     shap_df.to_csv("shap_values.csv", index=False)
 
-    print(shap_df.head())
 
 with torch.no_grad():
     features()
+
 
