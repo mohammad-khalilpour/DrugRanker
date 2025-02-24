@@ -63,7 +63,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
             pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, 
                          clines2=cl_emb2, output_type=0)
 
-            plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/enc_ppi_attention"
+            plot_path = "/media/external_16TB_1/kian_khalilpour/DrugRanker/assets/model_graph/cell_drug_attention"
             if not Path(plot_path).exists():
                 make_dot(pred, params=dict(list(model.named_parameters()))).render(plot_path, format="png")
 

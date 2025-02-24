@@ -110,24 +110,35 @@ class Fingerprint(nn.Module):
         else:
             input_dim = 1024
 
-        if args.update_emb in ["drug-attention"]:
+        self.update_emb = args.update_emb
+        if self.update_emb in ["drug-attention"]:
             self.mha = nn.MultiheadAttention(input_dim, 1)
             self.norm = nn.LayerNorm(input_dim)
+        elif self.update_emb in ["cell+drug-attention"]:
+            self.mha = nn.MultiheadAttention(input_dim, 1)
         else:
             self.mha = None
-        self.ffn1 = nn.Linear(input_dim, 128)
-        self.ffn2 = nn.Linear(128, args.mol_out_size)
-        #self.mlp = MLP(channel_list=[input_dim, 256, 128, args.mol_out_size])
-        self.relu = nn.ReLU()
+
+        if self.update_emb in ["cell+drug-attention"]:
+            self.drug_dim_projector = FeatureProjector(channel_list=[input_dim, 4096, 1024, 256],
+                                                       in_acts=None)
+        else:
+            self.ffn1 = nn.Linear(input_dim, 128)
+            self.ffn2 = nn.Linear(128, args.mol_out_size)
+            #self.mlp = MLP(channel_list=[input_dim, 256, 128, args.mol_out_size])
+            self.relu = nn.ReLU()
         self.device = args.device
 
     def forward(self, molgraph, features):
         features = torch.from_numpy(np.stack(features)).float().to(self.device)
-        if self.mha is not None:
-            features, self.drug_weights = self.mha(features, features, features)
-            features = self.norm(features)
-        #return self.mlp(features)
-        return self.ffn2(self.relu(self.ffn1(features)))
+        if self.update_emb in ["cell+drug-attention"]:
+            return self.drug_dim_projector(self.mha(features))
+        else:
+            if self.mha is not None:
+                features, self.drug_weights = self.mha(features, features, features)
+                features = self.norm(features)
+            #return self.mlp(features)
+            return self.ffn2(self.relu(self.ffn1(features)))
 
 
 class Scoring(nn.Module):
@@ -140,6 +151,9 @@ class Scoring(nn.Module):
             self.scoring = 'mlp2'
             self.ffn = MLP(in_channels=self.out_size ,
                                     hidden_channels=25, num_layers=2, out_channels=1)
+        elif args.update_emb in ["cell+drug-attention"]:
+            self.scoring = 'fused'
+            self.ffn = FeatureProjector(channel_list=[256*2, 128, 1])
         elif args.scoring == 'linear':
             if args.to_use_ae_emb:
                 if args.update_emb in ['enc+ppi-attention']:
@@ -185,6 +199,8 @@ class Scoring(nn.Module):
                 score = self.ffn(torch.concat((cell_emb, cmp1_emb), dim=1)).squeeze()
             elif self.scoring == 'mlp2':
                 score = self.ffn(cmp1_emb).squeeze()
+            elif self.scoring == 'fused':
+                score = self.ffn(torch.concat((cell_emb, cmp1_emb), dim=1)).squeeze()
             #score = (self.scoring(cmp1_emb)*cell_emb).sum(dim=1)
             return score
 
@@ -233,6 +249,11 @@ class RankNet(nn.Module):
                              hidden_channels=50, num_layers=2, out_channels=args.mol_out_size)
         elif self.update_emb in ['list-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.ae_out_size, emb_dim=args.mol_out_size)
+        elif self.update_emb in ['cell+drug-attention']:
+            self.cell_dim_projector = FeatureProjector(channel_list=[args.gene_in_size, 4096, 1024, 256],
+                                                       in_acts=None)
+            self.fused_mlp = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
+                                                       in_acts="relu")
         elif self.update_emb in ['ppi-attention', 'drug+ppi-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
                                                        in_acts="relu")
@@ -264,6 +285,8 @@ class RankNet(nn.Module):
         elif 'cell+list-attention' in self.update_emb:
             te_layer = nn.TransformerEncoderLayer(args.mol_out_size, 1, 128)
             self.te = nn.TransformerEncoder(te_layer, 1)
+        elif self.update_emb in ['cell+drug-attention']:
+            self.cell_mha = nn.MultiheadAttention(args.ae_in_size, 1)
         elif self.update_emb in ['ppi-attention', 'drug+ppi-attention',
                                 'enc+ppi-attention', 'res+ppi-attention']:
             self.cell_mha = nn.MultiheadAttention(args.gene_in_size, 1)
@@ -290,11 +313,13 @@ class RankNet(nn.Module):
             x = torch.concat((cell_emb, cmp1_emb+cmp2_emb), dim=1)
             c = self.u_mlp(x)
         elif 'cell' in self.update_emb:
-            fused = self.u_mlp(torch.concat((cell_emb, cmp1_emb), dim=1))
             if self.update_emb == 'cell+list-attention':
+                fused = self.u_mlp(torch.concat((cell_emb, cmp1_emb), dim=1))
                 cmp1_emb = fused
             elif self.update_emb == 'cell-attention':
                 return cmp1_emb
+            elif self.update_emb in ['cell+drug-attention']:
+                return self.cell_dim_projector(cell_emb)
         elif self.update_emb == 'list-attention':
             cell_emb = self.cell_dim_projector(cell_emb)
         elif self.update_emb in ['enc+ppi-attention', 'res+ppi-attention']:
@@ -351,6 +376,8 @@ class RankNet(nn.Module):
             cell_emb2, self.gene_weights = self.cell_mha(clines2, clines2, clines2)
         elif self.update_emb in ["drug+ppi-attention"]:
             cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+        elif self.update_emb in ["cell+drug-attention"]:
+            cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
         else:
             cell_emb = clines
             
@@ -389,7 +416,8 @@ class RankNet(nn.Module):
 
             if self.update_emb != 'None':
                 if self.update_emb in ['ppi-attention', 'enc+ppi-attention',
-                                    'drug+ppi-attention', 'res+ppi-attention']:
+                                    'drug+ppi-attention', 'res+ppi-attention',
+                                    'cell+drug-attention']:
                     cell_emb = self.update(cell_emb, cmp_emb, cell_emb2=cell_emb2)
                 elif self.update_emb in ['attention+enc', 'drug-attention']:
                     pass

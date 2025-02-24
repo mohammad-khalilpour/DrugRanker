@@ -40,12 +40,11 @@ for setup in "${setups[@]}"; do
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
-                    --to_use_ae_emb \
                     --pretrained_ae \
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "drug-attention" \
+                    --update_emb "cell+drug-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --selected_genexp_path "$selected_genexp_path" \
