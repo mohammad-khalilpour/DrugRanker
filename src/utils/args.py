@@ -102,6 +102,13 @@ def parse_args(args = None):
     parser.add_argument('-classc', '--classify_cmp', action='store_true', help='additionally classify if comp is +/-')
     parser.set_defaults(do_train=True, cuda=True)
 
+    #shap_values
+    parser.add_argument('-described_features', '--described_features', help='features that should be described by shap values',
+                        choices=["cell_line", "drugs"])
+    parser.add_argument("-test_numbers", "--test_numbers", default=100, type=int)
+    parser.add_argument("-background_samples", "--background_samples", default=1, type=int)
+    parser.add_argument("-selected_genexp_path", "--selected_genexp_path", type=str)
+    parser.add_argument("-fold_num", "--fold_num", type=int)
     #parser.set_defaults(data_path='data/ctrpv2/LRO/aucs.txt',
     #                    smiles_path='data/ctrpv2/cmpd_smiles.txt',
     #                    splits_path='data/ctrpv2/LRO/',
@@ -111,7 +118,7 @@ def parse_args(args = None):
     #                    model='pairpushc', num_pairs=10)
     #parser.set_defaults(pretrained_ae=True)
     #parser.set_defaults(trained_ae_path='/fs/ess/PCON0041/Vishal/DrugRank/expts/ae/LRO/all_bs_64_outd_128/model.pt')
-    
+
     temp = parser.parse_args(args)
     args = override_args(temp)
     return args
