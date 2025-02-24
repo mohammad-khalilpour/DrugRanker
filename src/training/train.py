@@ -44,7 +44,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
             normalized_gene_expression = np.array(clobj.get_normalized_expression(clids))
             cl_emb = torch.from_numpy(gene_expression).to(args.device)
             cl_emb2 = None
-            if args.update_emb in ["ppi-attention"]:
+            if args.update_emb in ["ppi-attention", "drug+ppi-attention"]:
                 selected_gindices = np.load(args.selected_genexp_path)
                 cl_emb = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
             elif args.update_emb in ["enc+ppi-attention"]:
@@ -59,6 +59,7 @@ def train_step_listnet(clobj, model, loader, criterion, optimizer, epoch, args):
             # batch graph needed only for gnn models
             molgraph = to_batchgraph(mols) if args.gnn else None
 
+            # print(np.shape(features))
             pred = model(cl_emb, cmp1=molgraph, smiles1=mols, feat1=features, 
                          clines2=cl_emb2, output_type=0)
 

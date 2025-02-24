@@ -172,9 +172,10 @@ def avalon_features_generator(mol: Molecule, num_bits: int = 1024) -> np.ndarray
 	return features
 
 @register_features_generator('atom_pair')
-def atom_pair_features_generator(mol: Molecule) -> np.ndarray:
+def atom_pair_features_generator(mol: Molecule, num_bits: int = 4096) -> np.ndarray:
 	mol = Chem.MolFromSmiles(mol) if isinstance(mol, str) else mol
-	features_vec = GetHashedAtomPairFingerprintAsBitVect(mol, 1024)
+	# features_vec = GetHashedAtomPairFingerprintAsBitVect(mol, 1024)
+	features_vec = GetHashedAtomPairFingerprintAsBitVect(mol, num_bits)
 	features = np.zeros((1,))
 	DataStructs.ConvertToNumpyArray(features_vec, features)
 	return features

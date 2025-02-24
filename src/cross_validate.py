@@ -104,7 +104,17 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     # print(f"train_index: {train_index[0]}")
     # print(f"train_auc: {train_auc[0]}")
     features = precompute_features(args) # returns feature_dict keyed by smiles
-    # print(f"features: {len(features)}")
+
+    normalized_features = {}
+    feat_values = np.array(list(features.values()))
+    min_values = feat_values.min(axis=0)
+    max_values = feat_values.max(axis=0)
+    normalized_feat_values = (feat_values - min_values) / (max_values - min_values)
+    normalized_feat_values = np.nan_to_num(normalized_feat_values)
+    for i, durg_feats in enumerate(features.items()):
+        k, v = durg_feats
+        normalized_features[k] = list(normalized_feat_values[i])
+
     train_pts, val_pts, test_pts = [], [], []
     # train_pts and test_pts are lists of MoleculePoint objects where each object stores drug and cell line pair attributes
     for d in train_auc:
@@ -195,6 +205,16 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
                         np.save(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch}.npy', model.enc.drug_weights.detach().cpu().numpy())
                         if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy'):
                             os.remove(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+                                        
+                    elif args.update_emb in ["drug+ppi-attention"]:
+                        np.save(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch}.npy', model.enc.drug_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+                        
+                        np.save(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch}.npy', model.gene_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+             
                     else:
                         np.save(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch}.npy', model.gene_weights.detach().cpu().numpy())
                         if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy'):
@@ -224,6 +244,14 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
                             if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_best.npy'):
                                 os.remove(args.save_path +f'fold_{fold}/drug_aw_best.npy') # one file at a time
                             np.save(args.save_path +f'fold_{fold}/drug_aw_best.npy', model.enc.drug_weights.detach().cpu().numpy())
+                        elif args.update_emb in ["drug+ppi-attention"]:
+                            if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/drug_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/drug_aw_best.npy', model.enc.drug_weights.detach().cpu().numpy())
+
+                            if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/gene_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/gene_aw_best.npy', model.gene_weights.detach().cpu().numpy())
                         else:
                             if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_best.npy'):
                                 os.remove(args.save_path +f'fold_{fold}/gene_aw_best.npy') # one file at a time

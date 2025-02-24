@@ -34,7 +34,7 @@ def evaluate(clobj, model, test_dataloader, args, Kpos):
 		normalized_gene_expression = np.array(clobj.get_normalized_expression(clids))
 		cl_emb = torch.from_numpy(gene_expression).to(args.device)
 		cl_emb2 = None
-		if args.update_emb in ["ppi-attention"]:
+		if args.update_emb in ["ppi-attention", "drug+ppi-attention"]:
 			selected_gindices = np.load(args.selected_genexp_path)
 			cl_emb = torch.from_numpy(normalized_gene_expression[:, selected_gindices]).to(args.device)
 		elif args.update_emb in ["enc+ppi-attention"]:
