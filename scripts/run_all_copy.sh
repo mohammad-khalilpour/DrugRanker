@@ -1,7 +1,7 @@
 #!/bin/bash
 
 log_steps=5
-max_iter=500
+max_iter=100
 num_folds=5
 device=${1:-'cuda:0'}
 
@@ -30,7 +30,7 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/drug_atten_norm/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/drug_atten_new2/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \
@@ -40,11 +40,12 @@ for setup in "${setups[@]}"; do
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
+                    --to_use_ae_emb \
                     --pretrained_ae \
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "cell+drug-attention" \
+                    --update_emb "drug-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --selected_genexp_path "$selected_genexp_path" \

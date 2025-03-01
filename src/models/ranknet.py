@@ -50,7 +50,14 @@ class FeatureProjector(nn.Module):
             self.last_act_func = nn.Sigmoid()
 
         if self.in_acts is not None:
-            self.hidden_act_fun = nn.ReLU()
+            if self.in_acts == "relu":
+                self.hidden_act_fun = nn.ReLU()
+            elif self.in_acts == "leaky-relu":
+                self.hidden_act_fun = nn.LeakyReLU()
+            elif self.in_acts == "sigmoid":
+                self.hidden_act_fun = nn.Sigmoid()
+            else:
+                self.hidden_act_fun = nn.ReLU()
 
         self.out_layer = None
         self.linears = nn.ModuleList()
@@ -113,7 +120,7 @@ class Fingerprint(nn.Module):
         self.update_emb = args.update_emb
         if self.update_emb in ["drug-attention"]:
             self.mha = nn.MultiheadAttention(input_dim, 1)
-            self.norm = nn.LayerNorm(input_dim)
+            # self.norm = nn.LayerNorm(input_dim)
         elif self.update_emb in ["cell+drug-attention"]:
             self.mha = nn.MultiheadAttention(input_dim, 1)
         else:
@@ -122,6 +129,9 @@ class Fingerprint(nn.Module):
         if self.update_emb in ["cell+drug-attention"]:
             self.drug_dim_projector = FeatureProjector(channel_list=[input_dim, 4096, 1024, 256],
                                                        in_acts=None)
+        elif self.update_emb in ["drug-attention"]:
+            self.drug_dim_projector = FeatureProjector(channel_list=[input_dim, 1024, 256, 128],
+                                                        in_acts="sigmoid")
         else:
             self.ffn1 = nn.Linear(input_dim, 128)
             self.ffn2 = nn.Linear(128, args.mol_out_size)
@@ -132,11 +142,16 @@ class Fingerprint(nn.Module):
     def forward(self, molgraph, features):
         features = torch.from_numpy(np.stack(features)).float().to(self.device)
         if self.update_emb in ["cell+drug-attention"]:
-            return self.drug_dim_projector(self.mha(features))
+            features, self.drug_weights = self.mha(features, features, features)
+            return self.drug_dim_projector(features)
+        elif self.update_emb in ["drug-attention"]:
+            features, self.drug_weights = self.mha(features, features, features)
+            return self.drug_dim_projector(features)
         else:
-            if self.mha is not None:
-                features, self.drug_weights = self.mha(features, features, features)
-                features = self.norm(features)
+            # if self.mha is not None:
+            #     features, self.drug_weights = self.mha(features, features, features)
+            #     features = self.norm(features)
+
             #return self.mlp(features)
             return self.ffn2(self.relu(self.ffn1(features)))
 
@@ -154,6 +169,9 @@ class Scoring(nn.Module):
         elif args.update_emb in ["cell+drug-attention"]:
             self.scoring = 'fused'
             self.ffn = FeatureProjector(channel_list=[256*2, 128, 1])
+        elif args.update_emb in ["drug-attention"]:
+            self.scoring = 'fused'
+            self.ffn = FeatureProjector(channel_list=[128*2, 50, 1], in_acts="sigmoid")
         elif args.scoring == 'linear':
             if args.to_use_ae_emb:
                 if args.update_emb in ['enc+ppi-attention']:
@@ -250,10 +268,10 @@ class RankNet(nn.Module):
         elif self.update_emb in ['list-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.ae_out_size, emb_dim=args.mol_out_size)
         elif self.update_emb in ['cell+drug-attention']:
-            self.cell_dim_projector = FeatureProjector(channel_list=[args.gene_in_size, 4096, 1024, 256],
+            self.cell_dim_projector = FeatureProjector(channel_list=[args.ae_in_size, 4096, 1024, 256],
                                                        in_acts=None)
-            self.fused_mlp = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
-                                                       in_acts="relu")
+            # self.fused_mlp = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
+            #                                            in_acts="relu")
         elif self.update_emb in ['ppi-attention', 'drug+ppi-attention']:
             self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
                                                        in_acts="relu")
@@ -378,6 +396,7 @@ class RankNet(nn.Module):
             cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
         elif self.update_emb in ["cell+drug-attention"]:
             cell_emb, self.gene_weights = self.cell_mha(clines, clines, clines)
+            cell_emb2 = clines2
         else:
             cell_emb = clines
             
