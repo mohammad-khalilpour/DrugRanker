@@ -16,9 +16,27 @@ from models.ranknet import RankNet
 from dataloader.loader import CellLine, MoleculePoint, MoleculeDatasetTrain, MoleculeDatasetTest
 from dataloader.utils import *
 from utils.common import *
+from utils.metrics import *
+
 
 SEED = 123
 
+METRICS = ['CI', 'lCI', 'sCI', 'ktau', 'sp']
+Kpos = [1,3,5,10,20,40,60]
+for k in Kpos:
+    METRICS += [f'AP@{k}', f'AH@{k}', f'NDCG@{k}']
+
+# Print to the terminal
+log_level = logging.DEBUG
+logging.root.setLevel(log_level)
+formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s", "%Y-%m-%d %H:%M:%S")
+stream = logging.StreamHandler()
+stream.setLevel(log_level)
+stream.setFormatter(formatter)
+logger = logging.getLogger("pythonConfig")
+if not logger.hasHandlers():
+    logger.setLevel(log_level)
+    logger.addHandler(stream)
 
 def get_dataloader(args, data, splits, thresholds):
     sfold = 0
@@ -190,7 +208,7 @@ def predict(args, clobj, model, test_dataloader, verbose_mha=False):
                      "clines2": cl_emb2,
                      }
 
-            if clids[0] not in aw_outputs:
+            if ("attention" in args.update_emb) & (clids[0] not in aw_outputs):
                 aw_outputs[clids[0]] = list(get_feat_vector(input, model)[0].to("cpu").numpy().flatten())
                 if np.isnan(aw_outputs[clids[0]]).any():
                     logger.info(f"three exists null values in {clids[0]}...")
@@ -206,9 +224,31 @@ def predict(args, clobj, model, test_dataloader, verbose_mha=False):
             #     loss = float(total_loss/iters)
             # )
 
-    pred_dict = None
-	# metrics, m_clid, pred_dict = compute_metrics(true_auc, preds, ccl_ids, labels, in_test, cpd_ids, Kpos)
-    return preds, true_auc, pred_dict, aw_outputs #, metrics, m_clid
+    metrics, m_clid, pred_dict = compute_metrics(true_auc, preds, ccl_ids, labels, in_test, cpd_ids, Kpos)
+    return preds, true_auc, pred_dict, metrics, m_clid, aw_outputs
+
+def log_metrics(metric, mode, epoch, fold=None, log_file=None):
+    # print("mode", "epoch", "fold", sep=',', end=',')
+    # for k, v in metric.items():
+    #     print('%s' %k, end=',')
+    # print()
+    if log_file is not None:
+        print(mode, epoch, fold, sep=',', end=',', file=log_file)
+    else:
+        print(mode, epoch, fold, sep=',', end=',')
+    for k, v in metric.items():
+        if fold:
+            logger.info('%s (Epoch %d) : %s for fold %d = %.4f' %(mode, epoch, k, fold, v))
+        else:
+            logger.info('%s (Epoch %d) : Avg %s = %.4f' %(mode, epoch, k, v))
+        if log_file is not None:
+            print('%.4f' %v, end=',', file=log_file)
+        else:
+            print('%.4f' %v, end=',')
+    if log_file is not None:
+        print(file=log_file)
+    else:
+        print()
 
 def main(args):
     splits, thresholds = None, None
@@ -231,37 +271,57 @@ def main(args):
 
     ## selected ccle df
     ccle_df = pd.read_csv(args.genexp_path, index_col=0)
-    gene_indices = np.load(args.selected_genexp_path)
-    selected_genes = np.array(list(ccle_df.columns))[gene_indices]
-    print(selected_genes)
-    selected_genes = [c.split(" ")[0] for c in selected_genes]
+    if "ppi" in args.update_emb:
+        gene_indices = np.load(args.selected_genexp_path)
+        selected_genes = np.array(list(ccle_df.columns))[gene_indices]
+        print(selected_genes)
+        selected_genes = [c.split(" ")[0] for c in selected_genes]
 
+    results_dfs = []
     for item in data_loaders:
         fold, dloader = item
+        log_file = open(os.path.join(args.save_path, f"logs/results_inference_{fold}.txt"), 'w')
         if fold == 4:
             continue
-        print(dloader)
+
         ## model loading
         fold_path = Path(args.save_path) / f'fold_{fold}' 
         model_path = list(fold_path.rglob("./epoch_1*.pt"))[0]
         print(f"model_path: {model_path}")
-        gene_aw_path = list(fold_path.rglob("./gene_aw_epoch*.npy"))[0]
-        gene_aw = np.load(gene_aw_path)
+        if "attention" in args.update_emb:
+            gene_aw_path = list(fold_path.rglob("./gene_aw_epoch*.npy"))[0]
+            gene_aw = np.load(gene_aw_path)
         model = get_model(args, model_path)
-        print(f"model: {model}")
+        # print(f"model: {model}")
 
         ## get prediction and attention weights
         outputs = predict(args, clobj, model, dloader, verbose_mha=False)
-        aw_dict = outputs[3]
-        aw_df = pd.DataFrame(aw_dict).T
-        aw_df.columns = selected_genes
-        print(aw_df)
-        aw_df.to_csv(str(fold_path / "cell_aw.csv"))
-        mean_caws = list(aw_df.mean().sort_values(ascending = False).index)
-        # np.save(str(fold_path / "mean_caws.npy"), mean_caws)
-        with open(str(fold_path / "mean_caws.txt"), 'w') as f:
-            for g in mean_caws:
-                f.write("%s\n" % g)
+        m_clid = outputs[4]
+        metric = outputs[3]
+        epoch = 100
+        log_metrics(metric, 'Inference', epoch, fold, log_file=log_file)
+        avg_metrics = []
+        avg_metrics.append(metric)
+        results_dict = calc_avg_perf(avg_metrics)
+        results_dict["mode"] = 'Inference'
+        results_dict["epoch"] = epoch
+        if log_file is not None:
+            print(results_dict, file=log_file)
+        else:
+            print(results_dict)
+
+        if "attention" in args.update_emb:
+            aw_dict = outputs[6]
+            aw_df = pd.DataFrame(aw_dict).T
+            aw_df.columns = selected_genes
+            
+            # print(aw_df)
+            aw_df.to_csv(str(fold_path / "cell_aw.csv"))
+            mean_caws = list(aw_df.mean().sort_values(ascending = False).index)
+            # np.save(str(fold_path / "mean_caws.npy"), mean_caws)
+            with open(str(fold_path / "mean_caws.txt"), 'w') as f:
+                for g in mean_caws:
+                    f.write("%s\n" % g)
 
 if __name__ == "__main__":
     # args = parser.parse_args()

@@ -110,10 +110,11 @@ class Fingerprint(nn.Module):
         elif args.feature_gen == 'rdkit2d_morgan' or args.feature_gen == 'rdkit2d_morganc':
             input_dim = 2048 + 210
         elif args.feature_gen == 'rdkit2d_atompair':
-            # input_dim = 1024 + 210
-            input_dim = 4096 + 210
+            input_dim = 1024 + 210
+            # input_dim = 4096 + 210
         elif args.feature_gen == 'atom_pair':
-            input_dim = 4096
+            input_dim = 1024
+            # input_dim = 4096
         else:
             input_dim = 1024
 
@@ -131,7 +132,7 @@ class Fingerprint(nn.Module):
                                                        in_acts=None)
         elif self.update_emb in ["drug-attention"]:
             self.drug_dim_projector = FeatureProjector(channel_list=[input_dim, 1024, 256, 128],
-                                                        in_acts="sigmoid")
+                                                        in_acts="relu")
         else:
             self.ffn1 = nn.Linear(input_dim, 128)
             self.ffn2 = nn.Linear(128, args.mol_out_size)
@@ -171,7 +172,7 @@ class Scoring(nn.Module):
             self.ffn = FeatureProjector(channel_list=[256*2, 128, 1])
         elif args.update_emb in ["drug-attention"]:
             self.scoring = 'fused'
-            self.ffn = FeatureProjector(channel_list=[128*2, 50, 1], in_acts="sigmoid")
+            self.ffn = FeatureProjector(channel_list=[128*2, 50, 1], in_acts="relu")
         elif args.scoring == 'linear':
             if args.to_use_ae_emb:
                 if args.update_emb in ['enc+ppi-attention']:
@@ -308,8 +309,8 @@ class RankNet(nn.Module):
         elif self.update_emb in ['ppi-attention', 'drug+ppi-attention',
                                 'enc+ppi-attention', 'res+ppi-attention']:
             self.cell_mha = nn.MultiheadAttention(args.gene_in_size, 1)
-            # te_layer = nn.TransformerEncoderLayer(args.gene_in_size, 1, 128)
-            # self.te = nn.TransformerEncoder(te_layer, 1)
+            te_layer = nn.TransformerEncoderLayer(args.gene_in_size, 1, 128)
+            self.te = nn.TransformerEncoder(te_layer, 1)
         elif self.update_emb in ['attention+enc']:
             self.cell_mha = nn.MultiheadAttention(args.ae_in_size, 1)
         # elif self.update_emb in ['drug+ppi-attention']:
@@ -388,6 +389,9 @@ class RankNet(nn.Module):
             #     logger.info(f"three exists null values in self.gene_weights...")
             # if torch.isnan(cell_emb).any():
             #     logger.info(f"three exists null values in cell_emb...")
+
+            # cell_emb2 = self.te(clines)
+            # self.gene_weights = self.te.state_dict()["layers.0.self_attn.out_proj.weight"] 
             cell_emb2 = clines2
         elif self.update_emb in ["res+ppi-attention"]:
             cell_emb = self.res_mlp(clines)

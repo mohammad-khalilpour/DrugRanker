@@ -1,7 +1,7 @@
 #!/bin/bash
 
 log_steps=5
-max_iter=100
+max_iter=50
 num_folds=5
 device=${1:-'cuda:0'}
 
@@ -30,7 +30,7 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/drug_atten_new2/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/drug_atten_new3/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \

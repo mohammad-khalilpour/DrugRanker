@@ -24,21 +24,16 @@ def get_df_from_txt(file_path):
     
     return pd.DataFrame(logs_list)
 
-def main(args):
-    # Define the log file path
-    '''exp_dir = Path("/media/external_10TB/faraz_sarmeili/DrugRanker/expts/result")
-    setup = "LCO"
-    ds_name = "ctrp"
-    target_model = "lambdarank"
-    representation = "atom_pair"
-    results_dir = exp_dir / setup / ds_name / target_model / representation'''
-    results_dir = Path(args.save_path)
-    file_paths = list(results_dir.rglob("logs/results*.txt"))
-
+def calc_results(args, file_paths):
+    print(file_paths)
     dfs_list = [get_df_from_txt(p) for p in file_paths]
     max_num_epoch = min([df["epoch"].max() for df in dfs_list])
     modes = np.unique([np.unique(df["mode"].values) for df in dfs_list])
-    log_steps = args.log_steps
+
+    if "Inference" in modes:
+        log_steps = max_num_epoch
+    else:
+        log_steps = args.log_steps
 
     # concatenate them
     df_concat = pd.concat(dfs_list)
@@ -52,9 +47,29 @@ def main(args):
             avg_results.append(row)
 
     avg_results_df = pd.concat(avg_results, axis=1).T
-    avg_results_df.to_csv((results_dir / "logs/results_avg.csv"), index=False)
+    return avg_results_df, max_num_epoch
+
+def main(args):
+    # Define the log file path
     
-    target_modes = ["TEST"]
+    results_dir = Path(args.save_path)
+    file_paths = list(results_dir.rglob("logs/results*.txt"))
+
+    if args.do_test: 
+        file_paths = [f for f in file_paths if "inference" in f.name]
+    else:
+        file_paths = [f for f in file_paths if "inference" not in f.name]
+
+    avg_results_df, max_num_epoch = calc_results(args, file_paths)
+    if args.do_test:
+        avg_results_df.to_csv((results_dir / "logs/results_inference_avg.csv"), index=False)
+    else:
+        avg_results_df.to_csv((results_dir / "logs/results_avg.csv"), index=False)
+    
+    if args.do_test:
+        target_modes = ["Inference"]
+    else:
+        target_modes = ["TEST"]
     for m in target_modes:
         print(f"Results for {m} Set")
         for c in avg_results_df.columns:
