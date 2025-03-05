@@ -281,8 +281,6 @@ def main(args):
     for item in data_loaders:
         fold, dloader = item
         log_file = open(os.path.join(args.save_path, f"logs/results_inference_{fold}.txt"), 'w')
-        if fold == 4:
-            continue
 
         ## model loading
         fold_path = Path(args.save_path) / f'fold_{fold}' 
