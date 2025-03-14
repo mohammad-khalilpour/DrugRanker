@@ -105,10 +105,13 @@ def parse_args(args = None):
     #shap_values
     parser.add_argument('-described_features', '--described_features', help='features that should be described by shap values',
                         choices=["cell_line", "drugs"])
-    parser.add_argument("-test_numbers", "--test_numbers", default=100, type=int)
-    parser.add_argument("-background_samples", "--background_samples", default=1, type=int)
-    parser.add_argument("-selected_genexp_path", "--selected_genexp_path", type=str)
-    parser.add_argument("-fold_num", "--fold_num", type=int)
+    parser.add_argument("-cancer_type", "--cancer_type", default=100, type=int)
+    parser.add_argument("-background_samples", "--background_samples", default=2, type=int)
+    parser.add_argument("-genexp_path", "--genexp_path", type=str)
+    parser.add_argument("-selected_genes_indices", "--selected_genes_indices", type=str)
+    parser.add_argument("-cancer_type", "--cancer_type", type=str)
+    parser.add_argument("-cancers_types_file", "--cancers_types_file", type=str)
+    parser.add_argument("-cell_lines_file", "--cell_lines_file", type=str)
     #parser.set_defaults(data_path='data/ctrpv2/LRO/aucs.txt',
     #                    smiles_path='data/ctrpv2/cmpd_smiles.txt',
     #                    splits_path='data/ctrpv2/LRO/',
