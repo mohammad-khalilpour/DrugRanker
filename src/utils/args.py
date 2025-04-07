@@ -40,6 +40,7 @@ def parse_args(args = None):
     parser.add_argument('--do_comb_eval', action='store_true', help='Evaluating on both train+test drugs in 1st setting')
     parser.add_argument('--do_train_eval', action='store_true', help='Evaluating on training data')
     parser.add_argument('--do_test', action='store_true', help='Test the model')
+    parser.add_argument('--do_explain', action='store_true', help='Explain the model')
     
     # Data
     parser.add_argument('--data_path', type=str, help='Path to the cell,drug,AUC list')

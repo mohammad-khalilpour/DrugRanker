@@ -49,11 +49,33 @@ def calc_results(args, file_paths):
     avg_results_df = pd.concat(avg_results, axis=1).T
     return avg_results_df, max_num_epoch
 
+def get_avg_attention(args):
+    cell_attn_avg_df = None
+    drug_attn_avg_df = None
+    if any(cname in args.update_emb for cname in ["ppi", "cell"]):
+        cell_attn_fpaths = list(Path(args.save_path).rglob("fold_*/cell_aw*.csv"))
+        cell_concat_df = pd.concat([pd.read_csv(fpath, index_col=0) for fpath in cell_attn_fpaths])
+        cell_attn_avg_df = cell_concat_df.groupby(cell_concat_df.index).mean()
+    if "drug" in args.update_emb:
+        drug_attn_fpaths = list(Path(args.save_path).rglob("fold_*/frug_aw*.csv"))
+        drug_concat_df = pd.concat([pd.read_csv(fpath, index_col=0) for fpath in drug_attn_fpaths])
+        drug_attn_avg_df = drug_concat_df.groupby(drug_concat_df.index).mean()
+
+    return cell_attn_avg_df, drug_attn_avg_df
+
 def main(args):
     # Define the log file path
     
     results_dir = Path(args.save_path)
     file_paths = list(results_dir.rglob("logs/results*.txt"))
+    
+    if (args.do_explain) & ("attention" in args.update_emb):
+        cell_df, drug_df = get_avg_attention(args)
+        print(cell_df)
+        if cell_df is not None:
+            cell_df.to_csv((results_dir / "logs/cell_attn_avg.csv"))
+        if drug_df is not None:
+            drug_df.to_csv((results_dir / "logs/drug_attn_avg.csv"))
 
     if args.do_test: 
         file_paths = [f for f in file_paths if "inference" in f.name]

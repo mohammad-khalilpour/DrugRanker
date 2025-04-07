@@ -274,8 +274,7 @@ class RankNet(nn.Module):
             # self.fused_mlp = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
             #                                            in_acts="relu")
         elif self.update_emb in ['ppi-attention', 'drug+ppi-attention']:
-            self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size,
-                                                       in_acts="relu")
+            self.cell_dim_projector = FeatureProjector(fp_dim=args.gene_in_size, emb_dim=args.ae_out_size)
         elif self.update_emb in ['enc+ppi-attention']:
             self.u_mlp2 = FeatureProjector(channel_list=[args.gene_in_size, 128, args.ae_out_size], 
                                            in_acts="relu")

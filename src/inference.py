@@ -309,7 +309,7 @@ def main(args):
             print(results_dict)
 
         if "attention" in args.update_emb:
-            aw_dict = outputs[6]
+            aw_dict = outputs[5]
             aw_df = pd.DataFrame(aw_dict).T
             aw_df.columns = selected_genes
             
