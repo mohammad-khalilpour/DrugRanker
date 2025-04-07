@@ -1,18 +1,8 @@
 # Precision Anti-Cancer Drug Selection via Neural Ranking
 
-Authors: Vishal Dey, Xia Ning
-Co Authors: Faraz
-
-
-Workshop paper: Accepted in [BioKDD '23](https://biokdd.org/biokdd23/index.html)
-
-Full version: In Progress
-
-This repository provides the source code for the proposed methods: $\mathtt{Pair\text{-}PushC}$, $\mathtt{List\text{-}One}$ and $\mathtt{List\text{-}All}$ in our paper.
+This repository contains the implementation of the methods proposed in the paper [PaperName], building upon the codebase from [BaselinePaper and repo].
 
 ## Environments
-Operating systems: Red Hat Enterprise Linux (RHEL) 7.7
-
 Install packages under conda environments
 ```
 conda create -n drugrank python=3.9
