@@ -125,7 +125,8 @@ venv.bak/
 dmypy.json
 
 # data
-data/
+data/*
+!data/scripts/
 expts/
 *.csv
 
