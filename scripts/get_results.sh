@@ -1,24 +1,17 @@
 #!/bin/bash
 
+genexp_path='data/CCLE/CCLE_expression.csv'
 log_steps=5
 max_iter=100
-num_folds=5
+num_folds=1
 device=${1:-'cuda:0'}
 
-# models=("pairpushc" "lambdaloss" "lambdarank" "neuralndcg" "listone" "listall")
-# representations=('morgan_count' 'avalon' 'atom_pair' '2d_pharmacophore' 'layered_rdkit')
-# setups=("LCO" "LRO")
-
-models=("lambdarank")
-representations=("rdkit2d_atompair")
+models=("lambdaloss")
+representations=("morgan_count")
 setups=("LCO")
 
-data_set="prism"
+data_set="ctrp"
 data_dir="data/$data_set"
-genexp_path='data/CCLE/CCLE_expression.csv'
-# genexp_path="data/CCLE/CCLE_expression_${data_set}_w20.csv"
-# selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}.npy"
-selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}19.npy"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
@@ -31,13 +24,12 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/ppi_atten_f4096/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_gnn/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
-                python3 src/cross_validate.py \
+                python3 src/get_results.py \
                     --model "$model" \
                     --only_fold $fold \
-                    --gene_in_size 4899 \
                     --data_path "$data_dir/$setup/aucs.txt" \
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
@@ -45,20 +37,15 @@ for setup in "${setups[@]}"; do
                     --pretrained_ae \
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
+                    --gnn "dmpn" \
                     --max_iter $max_iter \
-                    --update_emb "ppi-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
-                    --selected_genexp_path "$selected_genexp_path" \
-                    --checkpointing \
-                    --to_save_attention_weights \
-                    --to_save_best \
                     --setup "$setup" \
-                    --log_steps $log_steps > $log_dir/results_$((fold+1)).txt
+                    --checkpointing \
+                    --log_steps $log_steps \
+                    --get_results_gnn "model-inspection"
             done
-            python3 src/get_results.py \
-                --save_path $save_dir \
-                --log_steps $log_steps
         done
     done
 done

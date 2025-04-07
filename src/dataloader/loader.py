@@ -23,6 +23,7 @@ SMILES_TO_MOLS = {}
 class CellLine:
     def __init__(self, expression_file):
         self.expression = {}
+        self.normalized_expression = {}
         sep = '\t' if 'Combined' in expression_file else ','
         with open(expression_file, 'r') as fp:
             next(fp)
@@ -30,8 +31,19 @@ class CellLine:
                 tmp = line.strip().split(sep)
                 self.expression[tmp[0]] = np.array(tmp[1:], dtype=np.float32) # type: ignore
 
+        self.gexps_values = np.array(list(self.expression.values()))
+        min_values = self.gexps_values.min(axis=0)
+        max_values = self.gexps_values.max(axis=0)
+        self.normalized_gexps_values = (self.gexps_values - min_values) / (max_values - min_values)
+        self.normalized_gexps_values = np.nan_to_num(self.normalized_gexps_values)
+        for i, cell_line in enumerate(self.expression.items()):
+            k, v = cell_line
+            self.normalized_expression[k] = self.normalized_gexps_values[i]
     def get_expression(self, ccl_ids):
         return [self.expression[_] for _ in ccl_ids]
+    
+    def get_normalized_expression(self, ccl_ids):
+        return [self.normalized_expression[_] for _ in ccl_ids]
 
 
 def get_mol(smiles):

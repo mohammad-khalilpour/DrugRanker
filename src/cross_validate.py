@@ -100,7 +100,20 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
                             if (args.setup == 'LRO') else \
                             get_fold_data_LCO(dataset, train_index, val_index, test_index, args.smiles_path)
 
+
+    # print(f"train_index: {train_index[0]}")
+    # print(f"train_auc: {train_auc[0]}")
     features = precompute_features(args) # returns feature_dict keyed by smiles
+
+    normalized_features = {}
+    feat_values = np.array(list(features.values()))
+    min_values = feat_values.min(axis=0)
+    max_values = feat_values.max(axis=0)
+    normalized_feat_values = (feat_values - min_values) / (max_values - min_values)
+    normalized_feat_values = np.nan_to_num(normalized_feat_values)
+    for i, durg_feats in enumerate(features.items()):
+        k, v = durg_feats
+        normalized_features[k] = list(normalized_feat_values[i])
 
     train_pts, val_pts, test_pts = [], [], []
     # train_pts and test_pts are lists of MoleculePoint objects where each object stores drug and cell line pair attributes
@@ -110,6 +123,8 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         val_pts.append(MoleculePoint(*d, features=features[d[0]], feature_gen=args.feature_gen, in_test=True))
     for d in test_auc:
         test_pts.append(MoleculePoint(*d, features=features[d[0]], feature_gen=args.feature_gen, in_test=True))
+    # print(f"train_pts: {len(train_pts)}")
+    # print(f"train_pts: {train_pts[0]}")
 
     # not required for ListOne and ListAll
     train_ps, test_ps = get_pair_setting(args)
@@ -165,6 +180,7 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
     json_out = []
     early_stop = EarlyStopping(patience=args.log_steps)
     
+    best_result = -1
     for epoch in range(1, args.max_iter+1):
         ## TODO: need to be reconsidered
         if args.model in ['listone', 'listall', 'lambdarank', 'neuralndcg', 'lambdaloss', 'approxndcg']:
@@ -177,14 +193,32 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
         logger.info("GNorm at epoch = %d : %.4f" %(epoch, gnorm))
 
         early_stop.step(compute_pnorm(model))
-
         # logging and evaluation at every `log_steps`
         if (epoch) and (epoch % args.log_steps == 0):
             # save models 
-            if (epoch==args.max_iter) or (args.checkpointing) and (epoch % 10 == 0):
+            if (epoch==args.max_iter) or (args.checkpointing and (epoch % args.log_steps == 0)):
                 torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_{epoch}.pt')
-                if args.gnn == "dmpn":
-                    torch.save(model.enc.state_dict(), args.save_path +f'fold_{fold}/gnn_epoch_{epoch}.pt')
+                if os.path.exists(args.save_path +f'fold_{fold}/epoch_{epoch - args.log_steps}.pt'):
+                    os.remove(args.save_path +f'fold_{fold}/epoch_{epoch - args.log_steps}.pt') # one file at a time
+                if args.to_save_attention_weights:
+                    if args.update_emb in ["drug-attention"]:
+                        np.save(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch}.npy', model.enc.drug_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+                                        
+                    elif args.update_emb in ["drug+ppi-attention"]:
+                        np.save(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch}.npy', model.enc.drug_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/drug_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+                        
+                        np.save(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch}.npy', model.gene_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
+             
+                    else:
+                        np.save(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch}.npy', model.gene_weights.detach().cpu().numpy())
+                        if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy'):
+                            os.remove(args.save_path +f'fold_{fold}/gene_aw_epoch_{epoch - args.log_steps}.npy') # one file at a time
 
             pred_scores, true_auc, metric, m_clid, pred_dict = evaluate(clobj, model, val_dataloader, args, Kpos)
             log_metrics(metric, 'VAL', epoch, fold)
@@ -199,6 +233,31 @@ def run(model, dataset, train_index, val_index, test_index, threshold,
             for k,v in m_clid.items():
                 st = [f'{v[_]:.4f}' for _ in METRICS]
                 print(str(epoch) + ',' + k + ',' + ','.join(st), file=f_test)
+
+            if args.to_save_best:
+                if metric['NDCG@10'] > best_result:
+                    if os.path.exists(args.save_path +f'fold_{fold}/best.pt'):
+                        os.remove(args.save_path +f'fold_{fold}/best.pt') # one file at a time
+                    torch.save(model.state_dict(), args.save_path +f'fold_{fold}/epoch_best.pt')
+                    if args.to_save_attention_weights:
+                        if args.update_emb in ["drug-attention"]:
+                            if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/drug_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/drug_aw_best.npy', model.enc.drug_weights.detach().cpu().numpy())
+                        elif args.update_emb in ["drug+ppi-attention"]:
+                            if os.path.exists(args.save_path +f'fold_{fold}/drug_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/drug_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/drug_aw_best.npy', model.enc.drug_weights.detach().cpu().numpy())
+
+                            if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/gene_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/gene_aw_best.npy', model.gene_weights.detach().cpu().numpy())
+                        else:
+                            if os.path.exists(args.save_path +f'fold_{fold}/gene_aw_best.npy'):
+                                os.remove(args.save_path +f'fold_{fold}/gene_aw_best.npy') # one file at a time
+                            np.save(args.save_path +f'fold_{fold}/gene_aw_best.npy', model.gene_weights.detach().cpu().numpy())
+                    best_result = metric['NDCG@10']
+                    logger.info('The best model saved at (Epoch %d) with %s = %.4f' %(epoch, 'NDCG@10', best_result))
             test_metrics[epoch] = metric
             json_out.append({'TEST:'+str(epoch): pred_dict})
 
@@ -384,6 +443,9 @@ def main(args):
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
     
+    # print(f"data: {data['train']}")
+    # print(f"data: {data.keys()}")
+    # print(f"splits: {splits[0]['train']}")
     cross_validate(args, data, splits, thresholds)
 
 

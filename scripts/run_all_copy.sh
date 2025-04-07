@@ -1,7 +1,7 @@
 #!/bin/bash
 
 log_steps=5
-max_iter=100
+max_iter=50
 num_folds=5
 device=${1:-'cuda:0'}
 
@@ -10,15 +10,14 @@ device=${1:-'cuda:0'}
 # setups=("LCO" "LRO")
 
 models=("lambdarank")
-representations=("rdkit2d_atompair")
+representations=("atom_pair")
 setups=("LCO")
 
-data_set="prism"
+data_set="ctrp"
 data_dir="data/$data_set"
 genexp_path='data/CCLE/CCLE_expression.csv'
 # genexp_path="data/CCLE/CCLE_expression_${data_set}_w20.csv"
-# selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}.npy"
-selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}19.npy"
+selected_genexp_path="data/${data_set}/selected_genes_indices_${data_set}.npy"
 
 for setup in "${setups[@]}"; do
     for model in "${models[@]}"; do
@@ -31,22 +30,22 @@ for setup in "${setups[@]}"; do
                     ae_path="expts/ae/$setup/$data_set/all_bs_64_outd_128/model.pt"
                     splits_path="$data_dir/$setup/"
                 fi
-                save_dir="expts/result_expl/ppi_atten_f4096/$setup/$data_set/$model/$representation/"
+                save_dir="expts/result_expl/drug_atten_new3/$setup/$data_set/$model/$representation/"
                 log_dir=$save_dir/logs/
                 mkdir -p $log_dir
                 python3 src/cross_validate.py \
                     --model "$model" \
                     --only_fold $fold \
-                    --gene_in_size 4899 \
                     --data_path "$data_dir/$setup/aucs.txt" \
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
                     --splits_path $splits_path \
                     --save_path $save_dir \
+                    --to_use_ae_emb \
                     --pretrained_ae \
                     --trained_ae_path "$ae_path" \
                     --feature_gen "$representation" \
                     --max_iter $max_iter \
-                    --update_emb "ppi-attention" \
+                    --update_emb "drug-attention" \
                     --desired_device $device \
                     --genexp_path "$genexp_path" \
                     --selected_genexp_path "$selected_genexp_path" \

@@ -37,10 +37,11 @@ def parse_args(args = None):
     #parser.add_argument('-fonly', '--use_features_only', action='store_true', help='use only features for baselines')
 
     # Training and testing
-    parser.add_argument('--do_train', action='store_true', help='Train the model?')
+    parser.add_argument('--do_train', action='store_true', help='Train the model')
     parser.add_argument('--do_comb_eval', action='store_true', help='Evaluating on both train+test drugs in 1st setting')
-    #parser.add_argument('--do_test', action='store_true', help='Test the model?')
     parser.add_argument('--do_train_eval', action='store_true', help='Evaluating on training data')
+    parser.add_argument('--do_test', action='store_true', help='Test the model')
+    parser.add_argument('--do_explain', action='store_true', help='Explain the model')
     
     # Data
     parser.add_argument('--data_path', type=str, help='Path to the cell,drug,AUC list')
@@ -48,11 +49,19 @@ def parse_args(args = None):
     parser.add_argument('--splits_path', type=str, help='Path to the CV split indices')
     parser.add_argument('--genexp_path', type=str, help='Path to the gene expression data',
                         default='data/CCLE/CCLE_expression.csv')
+    parser.add_argument('--selected_genexp_path', type=str, help='Path to the gene expression data',
+                        default='data/ctrp/selected_genes_indices.npy')
 
     # Model architecture
     parser.add_argument('-mol_outd', '--mol_out_size', default=50, type=int)
     parser.add_argument('-ae_ind', '--ae_in_size', default=19177, type=int)
+    parser.add_argument('-to_use_ae', '--to_use_ae_emb', action='store_true',
+                        help='if you want to use the ae as cell-line embedding')
+    parser.add_argument('-gene_ind', '--gene_in_size', default=2882, type=int,
+                        help="define the gene input size for explanation purposes \
+                            (ppi: ctrp: 2882, prism19: 4899, prism24: 7887") 
     parser.add_argument('-ae_outd', '--ae_out_size', default=128, type=int)
+    parser.add_argument('-res_outd', '--res_out_size', default=128, type=int)
     parser.add_argument('-attn_d', '--attn_dim', default=25, type=int)
     parser.add_argument('-T', '--message_steps', default=3, type=int)
     parser.add_argument('-pool', '--pooling', type=str, default='sum', help='Pooling', \
@@ -60,7 +69,10 @@ def parse_args(args = None):
                     'hier-attention', 'hier-sum', 'hier-cat-sum', 'hier-cat-attention', 'hier-cat-v-attention'])
     parser.add_argument('--atom_messages', action = 'store_true')
     parser.add_argument('--update_emb', default='None',
-                    choices=['cell-attention', 'list-attention', 'cell+list-attention'], \
+                    choices=['cell-attention', 'list-attention', 'cell+list-attention', 
+                            'ppi-attention', 'lasso-attention', 'drug-attention',
+                            'drug+ppi-attention', 'enc+ppi-attention', 'attention+enc', 
+                            'res+ppi-attention', 'res+lasso-attention', 'cell+drug-attention'], \
                     help='how to convolve comp embeddings to create context vector')
     parser.add_argument('--agg_emb', default='sum', choices=['self', 'concat', 'sum'],
                      help='how to update comp embeddings from context vector')
@@ -95,6 +107,8 @@ def parse_args(args = None):
     parser.add_argument('--log_steps', default=5, type=int, help='log evaluation results every 5 epochs')
     parser.add_argument('--save_path', default='tmp/', type=str)
     parser.add_argument('--checkpointing', action='store_true', help='Whether to save model every `log_steps` epochs')
+    parser.add_argument('--to_save_attention_weights', action='store_true', help='Whether to save attentions weights every `log_steps` epochs')
+    parser.add_argument('--to_save_best', action='store_true', help='Whether to save best model every `log_steps` epochs')
     
     # Misc
     #parser.add_argument('-cluster', '--cluster', action='store_true', help='additionally optimize hinge loss')

@@ -29,6 +29,8 @@ for model in "${models[@]}"; do
                 mkdir -p "$log_dir"
                 python3 src/shapley_listwise.py \
                     --model "$data_set/$model/$representation/$fold" \
+                    --to_use_ae_emb \
+                    --pretrained_ae \
                     --described_features "$described_feature" \
                     --data_path "$data_dir/LRO/aucs.txt" \
                     --smiles_path "$data_dir/cmpd_smiles.txt" \
